@@ -151,6 +151,10 @@ fn Lexer::is_triple(self : Lexer, c : Char) -> Bool {
 fn Lexer::lex_string(self : Lexer, quote : Char) -> String raise TomlError {
   if self.is_triple(quote) {
     self.advance_n(3)
+    // A newline immediately following the opening delimiter is trimmed.
+    if self.peek_is('\n') || self.peek_is('\r') {
+      self.consume_newline()
+    }
     let value = self.lex_string_body(quote, true)
     if !self.is_triple(quote) {
       self.raise_here("unterminated multiline string")

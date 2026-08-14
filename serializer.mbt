@@ -54,11 +54,11 @@ fn write_table(table : Table, prefix : String, out : Array[String]) -> Unit {
               out.push("[[" + child + "]]")
               write_table(t, child, out)
             }
-            _ => out.push(child + " = " + serialize_value(elem))
+            _ => out.push(qkey + " = " + serialize_value(elem))
           }
         }
       }
-      _ => out.push(child + " = " + serialize_value(value))
+      _ => out.push(qkey + " = " + serialize_value(value))
     }
   }
 }
