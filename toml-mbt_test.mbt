@@ -1,8 +1,6 @@
 ///|
 test "parse scalar values" {
-  let table = @toml-mbt.parse(
-    "s = \"hi\"\ni = 42\nf = 3.5\nb = true\n",
-  ).unwrap()
+  let table = @toml-mbt.parse("s = \"hi\"\ni = 42\nf = 3.5\nb = true\n").unwrap()
   match table.get("s") {
     Some(String(s)) => assert_eq(s, "hi")
     _ => assert_true(false)
@@ -40,31 +38,32 @@ test "parse nested tables and dotted keys" {
     _ => assert_true(false)
   }
   match table.get("database") {
-    Some(Table(d)) => match d.get("primary") {
-      Some(Table(p)) => match p.get("name") {
-        Some(String(n)) => assert_eq(n, "app")
+    Some(Table(d)) =>
+      match d.get("primary") {
+        Some(Table(p)) =>
+          match p.get("name") {
+            Some(String(n)) => assert_eq(n, "app")
+            _ => assert_true(false)
+          }
         _ => assert_true(false)
       }
-      _ => assert_true(false)
-    }
     _ => assert_true(false)
   }
 }
 
 ///|
 test "parse arrays and inline tables" {
-  let table = @toml-mbt.parse(
-    "nums = [1, 2, 3]\npoint = { x = 1, y = 2 }\n",
-  ).unwrap()
+  let table = @toml-mbt.parse("nums = [1, 2, 3]\npoint = { x = 1, y = 2 }\n").unwrap()
   match table.get("nums") {
     Some(Array(arr)) => assert_eq(arr.length(), 3)
     _ => assert_true(false)
   }
   match table.get("point") {
-    Some(Table(p)) => match p.get("x") {
-      Some(Integer(x)) => assert_eq(x, 1L)
-      _ => assert_true(false)
-    }
+    Some(Table(p)) =>
+      match p.get("x") {
+        Some(Integer(x)) => assert_eq(x, 1L)
+        _ => assert_true(false)
+      }
     _ => assert_true(false)
   }
 }
@@ -78,10 +77,11 @@ test "parse array of tables" {
     Some(Array(arr)) => {
       assert_eq(arr.length(), 2)
       match arr[0] {
-        Table(p) => match p.get("name") {
-          Some(String(n)) => assert_eq(n, "Hammer")
-          _ => assert_true(false)
-        }
+        Table(p) =>
+          match p.get("name") {
+            Some(String(n)) => assert_eq(n, "Hammer")
+            _ => assert_true(false)
+          }
         _ => assert_true(false)
       }
     }

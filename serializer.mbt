@@ -46,7 +46,7 @@ fn write_table(table : Table, prefix : String, out : Array[String]) -> Unit {
         out.push("[" + child + "]")
         write_table(t, child, out)
       }
-      Array(arr) if all_tables(arr) => {
+      Array(arr) if all_tables(arr) =>
         for elem in arr {
           match elem {
             Table(t) => {
@@ -57,7 +57,6 @@ fn write_table(table : Table, prefix : String, out : Array[String]) -> Unit {
             _ => out.push(qkey + " = " + serialize_value(elem))
           }
         }
-      }
       _ => out.push(qkey + " = " + serialize_value(value))
     }
   }
@@ -86,7 +85,10 @@ fn serialize_value(value : Value) -> String {
     Float(f) => format_float(f)
     Boolean(b) => if b { "true" } else { "false" }
     OffsetDateTime(dt) =>
-      format_date(dt.date) + "T" + format_time(dt.time) + format_offset(dt.offset_minutes)
+      format_date(dt.date) +
+      "T" +
+      format_time(dt.time) +
+      format_offset(dt.offset_minutes)
     LocalDateTime(dt) => format_date(dt.date) + "T" + format_time(dt.time)
     LocalDate(d) => format_date(d)
     LocalTime(t) => format_time(t)
@@ -120,8 +122,11 @@ fn is_bare_key(key : String) -> Bool {
     return false
   }
   for c in key.iter() {
-    if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' ||
-      c == '_' || c == '-') {
+    if !((c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      c == '_' ||
+      c == '-') {
       return false
     }
   }
@@ -175,9 +180,9 @@ fn u_escape(code : Int) -> String {
   let d2 = (code >> 4) & 0xF
   let d3 = code & 0xF
   digits.substring(start=d0, end=d0 + 1) +
-    digits.substring(start=d1, end=d1 + 1) +
-    digits.substring(start=d2, end=d2 + 1) +
-    digits.substring(start=d3, end=d3 + 1)
+  digits.substring(start=d1, end=d1 + 1) +
+  digits.substring(start=d2, end=d2 + 1) +
+  digits.substring(start=d3, end=d3 + 1)
 }
 
 ///|

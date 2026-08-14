@@ -25,8 +25,7 @@ fn value_to_json(value : Value) -> Json {
     Integer(i) => tagged("integer", i.to_string())
     Float(f) => tagged("float", format_float(f))
     Boolean(b) => tagged("bool", if b { "true" } else { "false" })
-    OffsetDateTime(dt) =>
-      tagged("datetime", format_offset_datetime(dt))
+    OffsetDateTime(dt) => tagged("datetime", format_offset_datetime(dt))
     LocalDateTime(dt) => tagged("datetime-local", format_local_datetime(dt))
     LocalDate(d) => tagged("date-local", format_date(d))
     LocalTime(t) => tagged("time-local", format_time(t))
@@ -51,7 +50,10 @@ fn tagged(kind : String, value : String) -> Json {
 
 ///|
 fn format_offset_datetime(dt : OffsetDateTime) -> String {
-  format_date(dt.date) + "T" + format_time(dt.time) + format_offset(dt.offset_minutes)
+  format_date(dt.date) +
+  "T" +
+  format_time(dt.time) +
+  format_offset(dt.offset_minutes)
 }
 
 ///|

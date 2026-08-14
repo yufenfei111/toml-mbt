@@ -1,0 +1,93 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "yufenfei111/toml-mbt"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse(String) -> Result[Map[String, Value], TomlError]
+
+pub fn serialize(Map[String, Value]) -> String
+
+pub fn to_json(Map[String, Value]) -> Json
+
+// Errors
+pub suberror TomlError {
+  ParseError(Int, Int, String)
+} derive(@debug.Debug)
+pub fn TomlError::new(Int, Int, String) -> Self
+pub fn TomlError::to_string(Self) -> String
+
+// Types and methods
+type Lexer
+pub fn Lexer::tokenize(String) -> Array[Token] raise TomlError
+
+pub struct LocalDate {
+  year : Int
+  month : Int
+  day : Int
+} derive(Eq, @debug.Debug)
+pub fn LocalDate::new(Int, Int, Int) -> Self
+
+pub struct LocalDateTime {
+  date : LocalDate
+  time : LocalTime
+} derive(Eq, @debug.Debug)
+pub fn LocalDateTime::new(LocalDate, LocalTime) -> Self
+
+pub struct LocalTime {
+  hour : Int
+  minute : Int
+  second : Int
+  nanosecond : Int
+} derive(Eq, @debug.Debug)
+pub fn LocalTime::new(Int, Int, Int, Int) -> Self
+
+pub struct OffsetDateTime {
+  date : LocalDate
+  time : LocalTime
+  offset_minutes : Int
+} derive(Eq, @debug.Debug)
+pub fn OffsetDateTime::new(LocalDate, LocalTime, Int) -> Self
+
+type Parser
+
+pub struct Token {
+  kind : TokenKind
+  line : Int
+  column : Int
+} derive(Eq, @debug.Debug)
+pub fn Token::new(TokenKind, Int, Int) -> Self
+
+pub enum TokenKind {
+  Word(String)
+  Str(String)
+  Equal
+  Comma
+  LBracket
+  RBracket
+  LBrace
+  RBrace
+  Newline
+  EOF
+} derive(Eq, @debug.Debug)
+
+pub enum Value {
+  String(String)
+  Integer(Int64)
+  Float(Double)
+  Boolean(Bool)
+  OffsetDateTime(OffsetDateTime)
+  LocalDateTime(LocalDateTime)
+  LocalDate(LocalDate)
+  LocalTime(LocalTime)
+  Array(Array[Value])
+  Table(Map[String, Value])
+} derive(@debug.Debug)
+pub impl Eq for Value
+
+// Type aliases
+pub type Table = Map[String, Value]
+
+// Traits

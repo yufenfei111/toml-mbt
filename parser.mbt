@@ -357,7 +357,10 @@ fn Parser::parse_inline_table(self : Parser) -> Value raise TomlError {
 }
 
 ///|
-fn Parser::parse_word_value(self : Parser, word : String) -> Value raise TomlError {
+fn Parser::parse_word_value(
+  self : Parser,
+  word : String,
+) -> Value raise TomlError {
   match word {
     "true" => Boolean(true)
     "false" => Boolean(false)
@@ -461,11 +464,11 @@ fn is_all_digits(s : String) -> Bool {
 /// True when `word` starts with a `YYYY-MM-DD` date prefix.
 fn looks_like_date(word : String) -> Bool {
   word.length() >= 10 &&
-    is_all_digits(word.substring(start=0, end=4)) &&
-    word.substring(start=4, end=5) == "-" &&
-    is_all_digits(word.substring(start=5, end=7)) &&
-    word.substring(start=7, end=8) == "-" &&
-    is_all_digits(word.substring(start=8, end=10))
+  is_all_digits(word.substring(start=0, end=4)) &&
+  word.substring(start=4, end=5) == "-" &&
+  is_all_digits(word.substring(start=5, end=7)) &&
+  word.substring(start=7, end=8) == "-" &&
+  is_all_digits(word.substring(start=8, end=10))
 }
 
 ///|
@@ -478,24 +481,32 @@ fn is_date_only(word : String) -> Bool {
 /// True when `word` starts with a `HH:MM:SS` time prefix.
 fn is_time_only(word : String) -> Bool {
   word.length() >= 8 &&
-    is_all_digits(word.substring(start=0, end=2)) &&
-    word.substring(start=2, end=3) == ":" &&
-    is_all_digits(word.substring(start=3, end=5)) &&
-    word.substring(start=5, end=6) == ":" &&
-    is_all_digits(word.substring(start=6, end=8))
+  is_all_digits(word.substring(start=0, end=2)) &&
+  word.substring(start=2, end=3) == ":" &&
+  is_all_digits(word.substring(start=3, end=5)) &&
+  word.substring(start=5, end=6) == ":" &&
+  is_all_digits(word.substring(start=6, end=8))
 }
 
 ///|
 fn is_datetime_word(word : String) -> Bool {
-  word.contains(":") || word.contains("T") || word.contains("t") ||
-    looks_like_date(word)
+  word.contains(":") ||
+  word.contains("T") ||
+  word.contains("t") ||
+  looks_like_date(word)
 }
 
 ///|
 fn is_float_word(word : String) -> Bool {
-  word.contains(".") || word.contains("e") || word.contains("E") ||
-    word == "inf" || word == "+inf" || word == "-inf" ||
-    word == "nan" || word == "+nan" || word == "-nan"
+  word.contains(".") ||
+  word.contains("e") ||
+  word.contains("E") ||
+  word == "inf" ||
+  word == "+inf" ||
+  word == "-inf" ||
+  word == "nan" ||
+  word == "+nan" ||
+  word == "-nan"
 }
 
 ///|
@@ -520,9 +531,12 @@ fn has_leading_zero(word : String) -> Bool {
   if s.length() <= 1 {
     return false
   }
-  if s.has_prefix("0x") || s.has_prefix("0X") ||
-    s.has_prefix("0o") || s.has_prefix("0O") ||
-    s.has_prefix("0b") || s.has_prefix("0B") {
+  if s.has_prefix("0x") ||
+    s.has_prefix("0X") ||
+    s.has_prefix("0o") ||
+    s.has_prefix("0O") ||
+    s.has_prefix("0b") ||
+    s.has_prefix("0B") {
     return false
   }
   s.has_prefix("0")
@@ -582,7 +596,8 @@ fn parse_int_component(s : String) -> Result[Int, String] {
 
 ///|
 fn parse_date_str(s : String) -> Result[LocalDate, String] {
-  if s.length() != 10 || s.substring(start=4, end=5) != "-" ||
+  if s.length() != 10 ||
+    s.substring(start=4, end=5) != "-" ||
     s.substring(start=7, end=8) != "-" {
     return Err("invalid date")
   }
@@ -626,7 +641,8 @@ fn frac_to_nanos(frac : String) -> Int {
 
 ///|
 fn parse_time_str(s : String) -> Result[LocalTime, String] {
-  if s.length() < 8 || s.substring(start=2, end=3) != ":" ||
+  if s.length() < 8 ||
+    s.substring(start=2, end=3) != ":" ||
     s.substring(start=5, end=6) != ":" {
     return Err("invalid time")
   }
@@ -727,7 +743,10 @@ fn parse_datetime_rest(date : LocalDate, s : String) -> Result[Value, String] {
 ///|
 /// Parses a date-time word (and an optional following time word for the
 /// space-separated local date-time form) into a `Value`.
-fn parse_datetime_str(word : String, following : String?) -> Result[Value, String] {
+fn parse_datetime_str(
+  word : String,
+  following : String?,
+) -> Result[Value, String] {
   if word.contains(":") && !looks_like_date(word) {
     return match parse_time_str(word) {
       Ok(t) => Ok(LocalTime(t))
@@ -742,10 +761,11 @@ fn parse_datetime_str(word : String, following : String?) -> Result[Value, Strin
     let rest = word.substring(start=10, end=word.length())
     if rest == "" {
       return match following {
-        Some(t) => match parse_time_str(t) {
-          Ok(time) => Ok(LocalDateTime(LocalDateTime::new(date, time)))
-          Err(e) => Err(e)
-        }
+        Some(t) =>
+          match parse_time_str(t) {
+            Ok(time) => Ok(LocalDateTime(LocalDateTime::new(date, time)))
+            Err(e) => Err(e)
+          }
         None => Ok(LocalDate(date))
       }
     }

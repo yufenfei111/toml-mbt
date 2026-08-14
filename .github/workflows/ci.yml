@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MoonBit toolchain
+        uses: chawyehsu/setup-moonup@v1
+        with:
+          channel: stable
+
+      - name: Type check
+        run: moon check
+
+      - name: Run tests
+        run: moon test
+
+      - name: Build
+        run: moon build
+
+      - name: Format check
+        run: moon fmt --check

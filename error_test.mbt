@@ -45,10 +45,9 @@ test "bare key as value is an error" {
 test "error carries line and column" {
   match @toml-mbt.parse("ok = 1\nbad = @@@\n") {
     Ok(_) => assert_true(false)
-    Err(e) => {
+    Err(e) =>
       // The error message should mention the offending line.
       assert_true(e.to_string().contains("line 2"))
-    }
   }
 }
 

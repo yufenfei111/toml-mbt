@@ -14,9 +14,9 @@ pub fn TomlError::new(line : Int, column : Int, message : String) -> TomlError {
 
 ///|
 /// Renders the error as `line N, column M: message`.
-impl Show for TomlError with fn output(self : TomlError, logger) {
+pub fn TomlError::to_string(self : TomlError) -> String {
   match self {
     ParseError(line, column, message) =>
-      logger.write_string("line \{line}, column \{column}: \{message}")
+      "line \{line}, column \{column}: \{message}"
   }
 }
