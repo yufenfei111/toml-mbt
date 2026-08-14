@@ -1,0 +1,5 @@
+// import {
+//   "yufenfei111/toml-mbt" @lib,
+// }
+
+pkgtype(kind: "executable")
