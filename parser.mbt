@@ -106,24 +106,35 @@ fn split_dotted(w : String) -> Array[String] {
 /// a bare word segment or a quoted string.
 fn Parser::parse_key(self : Parser) -> Array[String] raise TomlError {
   let parts : Array[String] = []
+  let mut expect_more = false
   while true {
     match self.peek_kind() {
       Word(w) => {
         self.advance()
         let segs = split_dotted(w)
-        let trailing = segs[segs.length() - 1] == ""
+        let n = segs.length()
+        if segs[0] == "" && parts.length() == 0 {
+          self.raise_err("a key cannot start with a dot")
+        }
+        for i in 1..<(n - 1) {
+          if segs[i] == "" {
+            self.raise_err("empty key segment")
+          }
+        }
         for seg in segs {
           if seg != "" {
             parts.push(seg)
           }
         }
-        if !trailing {
+        expect_more = segs[n - 1] == ""
+        if !expect_more {
           break
         }
       }
       Str(s) => {
         parts.push(s)
         self.advance()
+        expect_more = false
         match self.peek_kind() {
           Word(w2) if w2.has_prefix(".") => continue
           _ => break
@@ -134,6 +145,9 @@ fn Parser::parse_key(self : Parser) -> Array[String] raise TomlError {
   }
   if parts.length() == 0 {
     self.raise_err("expected a key")
+  }
+  if expect_more {
+    self.raise_err("a key cannot end with a dot")
   }
   parts
 }
@@ -498,15 +512,34 @@ fn is_datetime_word(word : String) -> Bool {
 
 ///|
 fn is_float_word(word : String) -> Bool {
-  word.contains(".") ||
-  word.contains("e") ||
-  word.contains("E") ||
-  word == "inf" ||
-  word == "+inf" ||
-  word == "-inf" ||
-  word == "nan" ||
-  word == "+nan" ||
-  word == "-nan"
+  if word == "inf" ||
+    word == "+inf" ||
+    word == "-inf" ||
+    word == "nan" ||
+    word == "+nan" ||
+    word == "-nan" {
+    return true
+  }
+  if has_integer_base_prefix(word) {
+    return false
+  }
+  word.contains(".") || word.contains("e") || word.contains("E")
+}
+
+///|
+/// True when `word` has a non-decimal integer base prefix (`0x`, `0o`, `0b`).
+fn has_integer_base_prefix(word : String) -> Bool {
+  let s = if word.has_prefix("+") || word.has_prefix("-") {
+    word.substring(start=1, end=word.length())
+  } else {
+    word
+  }
+  s.has_prefix("0x") ||
+  s.has_prefix("0X") ||
+  s.has_prefix("0o") ||
+  s.has_prefix("0O") ||
+  s.has_prefix("0b") ||
+  s.has_prefix("0B")
 }
 
 ///|
@@ -561,12 +594,62 @@ fn parse_float_str(word : String) -> Result[Double, String] {
     "nan" | "+nan" | "-nan" => Ok(@double.not_a_number)
     _ => {
       let cleaned = strip_underscores(word)
+      if !is_valid_toml_float(cleaned) {
+        return Err("invalid float")
+      }
       match (try? @string.parse_double(cleaned)) {
         Ok(v) => Ok(v)
         Err(_) => Err("invalid float")
       }
     }
   }
+}
+
+///|
+/// Validates the TOML float grammar (integer part, optional fraction with at
+/// least one digit, optional exponent with at least one digit).
+fn is_valid_toml_float(word : String) -> Bool {
+  let mut s = word
+  if s.has_prefix("+") || s.has_prefix("-") {
+    s = s.substring(start=1, end=s.length())
+  }
+  let mut e_idx = -1
+  let mut dot_idx = -1
+  let chars : Array[Char] = s.iter().collect()
+  for i in 0..<chars.length() {
+    match chars[i] {
+      'e' | 'E' => if e_idx >= 0 { return false } else { e_idx = i }
+      '.' => if dot_idx >= 0 { return false } else { dot_idx = i }
+      _ => ()
+    }
+  }
+  if e_idx >= 0 && dot_idx >= 0 && e_idx < dot_idx {
+    return false
+  }
+  let mant_end = if e_idx >= 0 { e_idx } else { s.length() }
+  let mantissa = s.substring(start=0, end=mant_end)
+  if dot_idx >= 0 {
+    if dot_idx >= mant_end {
+      return false
+    }
+    let int_part = mantissa.substring(start=0, end=dot_idx)
+    let frac_part = mantissa.substring(start=dot_idx + 1, end=mantissa.length())
+    if !is_all_digits(int_part) || !is_all_digits(frac_part) {
+      return false
+    }
+  } else if e_idx < 0 || !is_all_digits(mantissa) {
+    return false
+  }
+  if e_idx >= 0 {
+    let mut exp = s.substring(start=e_idx + 1, end=s.length())
+    if exp.has_prefix("+") || exp.has_prefix("-") {
+      exp = exp.substring(start=1, end=exp.length())
+    }
+    if !is_all_digits(exp) {
+      return false
+    }
+  }
+  true
 }
 
 ///|

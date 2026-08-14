@@ -209,6 +209,11 @@ fn Lexer::lex_string_body(
           self.advance()
           self.lex_escape(chars, multiline)
         } else {
+          let code = c.to_int()
+          if (code < 0x20 && c != '\t' && c != '\n' && c != '\r') ||
+            code == 0x7F {
+            self.raise_here("unescaped control character in string")
+          }
           chars.push(c)
           self.advance()
         }
