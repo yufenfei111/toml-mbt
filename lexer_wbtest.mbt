@@ -127,17 +127,19 @@ test "lexer: triple quote inside multiline is literal" {
 
 ///|
 test "lexer: unterminated string raises" {
-  match (try? Lexer::tokenize("s = \"oops")) {
-    Ok(_) => assert_true(false)
-    Err(_) => ()
+  try Lexer::tokenize("s = \"oops") catch {
+    _ => ()
+  } noraise {
+    _ => assert_true(false)
   }
 }
 
 ///|
 test "lexer: invalid escape raises" {
-  match (try? Lexer::tokenize("s = \"\\q\"")) {
-    Ok(_) => assert_true(false)
-    Err(_) => ()
+  try Lexer::tokenize("s = \"\\q\"") catch {
+    _ => ()
+  } noraise {
+    _ => assert_true(false)
   }
 }
 

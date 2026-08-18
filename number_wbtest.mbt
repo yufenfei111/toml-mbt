@@ -41,17 +41,17 @@ test "parse max int64" {
 
 ///|
 test "integer rejects leading zero" {
-  assert_true(parse_integer_str("01").is_err())
+  assert_true(parse_integer_str("01") is Err(_))
 }
 
 ///|
 test "integer rejects overflow" {
-  assert_true(parse_integer_str("9223372036854775808").is_err())
+  assert_true(parse_integer_str("9223372036854775808") is Err(_))
 }
 
 ///|
 test "integer rejects garbage" {
-  assert_true(parse_integer_str("12abc").is_err())
+  assert_true(parse_integer_str("12abc") is Err(_))
 }
 
 ///|
@@ -86,7 +86,7 @@ test "parse NaN" {
 
 ///|
 test "float rejects garbage" {
-  assert_true(parse_float_str("1.2.3").is_err())
+  assert_true(parse_float_str("1.2.3") is Err(_))
 }
 
 ///|

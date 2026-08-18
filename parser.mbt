@@ -7,7 +7,7 @@
 /// `[[array-of-tables]]` headers.
 
 ///|
-struct Parser {
+priv struct Parser {
   tokens : Array[Token]
   mut pos : Int
   root : Table
@@ -104,12 +104,26 @@ fn split_dotted(w : String) -> Array[String] {
 ///|
 /// Reads a (possibly dotted) key and returns its parts. A key part is either
 /// a bare word segment or a quoted string.
+fn is_toml10_bare_key_char(ch : Char) -> Bool {
+  (ch >= 'a' && ch <= 'z') ||
+  (ch >= 'A' && ch <= 'Z') ||
+  (ch >= '0' && ch <= '9') ||
+  ch == '_' ||
+  ch == '-'
+}
+
+///|
 fn Parser::parse_key(self : Parser) -> Array[String] raise TomlError {
   let parts : Array[String] = []
   let mut expect_more = false
   while true {
     match self.peek_kind() {
       Word(w) => {
+        for ch in w.iter() {
+          if ch != '.' && !is_toml10_bare_key_char(ch) {
+            self.raise_err("invalid bare key character")
+          }
+        }
         self.advance()
         let segs = split_dotted(w)
         let n = segs.length()
@@ -340,7 +354,6 @@ fn Parser::parse_array(self : Parser) -> Value raise TomlError {
 fn Parser::parse_inline_table(self : Parser) -> Value raise TomlError {
   self.advance()
   let table : Table = Map([])
-  self.skip_newlines()
   if self.peek_kind() == RBrace {
     self.advance()
     return Table(table)
@@ -350,16 +363,8 @@ fn Parser::parse_inline_table(self : Parser) -> Value raise TomlError {
     self.expect(Equal)
     let value = self.parse_value()
     self.set_dotted(table, key, value)
-    self.skip_newlines()
     match self.peek_kind() {
-      Comma => {
-        self.advance()
-        self.skip_newlines()
-        if self.peek_kind() == RBrace {
-          self.advance()
-          break
-        }
-      }
+      Comma => self.advance()
       RBrace => {
         self.advance()
         break
@@ -449,7 +454,9 @@ fn do_parse(text : String) -> Table raise TomlError {
 ///|
 /// Parses a TOML document into a `Table`, or returns a `TomlError`.
 pub fn parse(text : String) -> Result[Table, TomlError] {
-  try? do_parse(text)
+  Ok(do_parse(text)) catch {
+    e => Err(e)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -478,11 +485,11 @@ fn is_all_digits(s : String) -> Bool {
 /// True when `word` starts with a `YYYY-MM-DD` date prefix.
 fn looks_like_date(word : String) -> Bool {
   word.length() >= 10 &&
-  is_all_digits(word.substring(start=0, end=4)) &&
-  word.substring(start=4, end=5) == "-" &&
-  is_all_digits(word.substring(start=5, end=7)) &&
-  word.substring(start=7, end=8) == "-" &&
-  is_all_digits(word.substring(start=8, end=10))
+  is_all_digits(word[:4].to_owned()) &&
+  word[4:5] == "-" &&
+  is_all_digits(word[5:7].to_owned()) &&
+  word[7:8] == "-" &&
+  is_all_digits(word[8:10].to_owned())
 }
 
 ///|
@@ -495,11 +502,11 @@ fn is_date_only(word : String) -> Bool {
 /// True when `word` starts with a `HH:MM:SS` time prefix.
 fn is_time_only(word : String) -> Bool {
   word.length() >= 8 &&
-  is_all_digits(word.substring(start=0, end=2)) &&
-  word.substring(start=2, end=3) == ":" &&
-  is_all_digits(word.substring(start=3, end=5)) &&
-  word.substring(start=5, end=6) == ":" &&
-  is_all_digits(word.substring(start=6, end=8))
+  is_all_digits(word[:2].to_owned()) &&
+  word[2:3] == ":" &&
+  is_all_digits(word[3:5].to_owned()) &&
+  word[5:6] == ":" &&
+  is_all_digits(word[6:8].to_owned())
 }
 
 ///|
@@ -530,7 +537,7 @@ fn is_float_word(word : String) -> Bool {
 /// True when `word` has a non-decimal integer base prefix (`0x`, `0o`, `0b`).
 fn has_integer_base_prefix(word : String) -> Bool {
   let s = if word.has_prefix("+") || word.has_prefix("-") {
-    word.substring(start=1, end=word.length())
+    word[1:]
   } else {
     word
   }
@@ -557,7 +564,7 @@ fn strip_underscores(s : String) -> String {
 /// True when `word` is a decimal integer with a leading zero (forbidden by TOML).
 fn has_leading_zero(word : String) -> Bool {
   let s = if word.has_prefix("+") || word.has_prefix("-") {
-    word.substring(start=1, end=word.length())
+    word[1:]
   } else {
     word
   }
@@ -580,9 +587,8 @@ fn parse_integer_str(word : String) -> Result[Int64, String] {
   if has_leading_zero(word) {
     return Err("leading zeros are not allowed")
   }
-  match (try? @string.parse_int64(word)) {
-    Ok(v) => Ok(v)
-    Err(_) => Err("invalid integer")
+  Ok(@string.parse_int64(word)) catch {
+    _ => Err("invalid integer")
   }
 }
 
@@ -597,9 +603,8 @@ fn parse_float_str(word : String) -> Result[Double, String] {
       if !is_valid_toml_float(cleaned) {
         return Err("invalid float")
       }
-      match (try? @string.parse_double(cleaned)) {
-        Ok(v) => Ok(v)
-        Err(_) => Err("invalid float")
+      Ok(@string.parse_double(cleaned)) catch {
+        _ => Err("invalid float")
       }
     }
   }
@@ -611,7 +616,7 @@ fn parse_float_str(word : String) -> Result[Double, String] {
 fn is_valid_toml_float(word : String) -> Bool {
   let mut s = word
   if s.has_prefix("+") || s.has_prefix("-") {
-    s = s.substring(start=1, end=s.length())
+    s = s[1:].to_owned()
   }
   let mut e_idx = -1
   let mut dot_idx = -1
@@ -627,13 +632,13 @@ fn is_valid_toml_float(word : String) -> Bool {
     return false
   }
   let mant_end = if e_idx >= 0 { e_idx } else { s.length() }
-  let mantissa = s.substring(start=0, end=mant_end)
+  let mantissa = s[:mant_end].to_owned()
   if dot_idx >= 0 {
     if dot_idx >= mant_end {
       return false
     }
-    let int_part = mantissa.substring(start=0, end=dot_idx)
-    let frac_part = mantissa.substring(start=dot_idx + 1, end=mantissa.length())
+    let int_part = mantissa[:dot_idx].to_owned()
+    let frac_part = mantissa[dot_idx + 1:].to_owned()
     if !is_all_digits(int_part) || !is_all_digits(frac_part) {
       return false
     }
@@ -641,9 +646,9 @@ fn is_valid_toml_float(word : String) -> Bool {
     return false
   }
   if e_idx >= 0 {
-    let mut exp = s.substring(start=e_idx + 1, end=s.length())
+    let mut exp = s[e_idx + 1:].to_owned()
     if exp.has_prefix("+") || exp.has_prefix("-") {
-      exp = exp.substring(start=1, end=exp.length())
+      exp = exp[1:].to_owned()
     }
     if !is_all_digits(exp) {
       return false
@@ -671,28 +676,25 @@ fn days_in_month(year : Int, month : Int) -> Int {
 
 ///|
 fn parse_int_component(s : String) -> Result[Int, String] {
-  match (try? @string.parse_int(s)) {
-    Ok(v) => Ok(v)
-    Err(_) => Err("invalid number")
+  Ok(@string.parse_int(s)) catch {
+    _ => Err("invalid number")
   }
 }
 
 ///|
 fn parse_date_str(s : String) -> Result[LocalDate, String] {
-  if s.length() != 10 ||
-    s.substring(start=4, end=5) != "-" ||
-    s.substring(start=7, end=8) != "-" {
+  if s.length() != 10 || s[4:5] != "-" || s[7:8] != "-" {
     return Err("invalid date")
   }
-  let year = match parse_int_component(s.substring(start=0, end=4)) {
+  let year = match parse_int_component(s[:4].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid date")
   }
-  let month = match parse_int_component(s.substring(start=5, end=7)) {
+  let month = match parse_int_component(s[5:7].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid date")
   }
-  let day = match parse_int_component(s.substring(start=8, end=10)) {
+  let day = match parse_int_component(s[8:10].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid date")
   }
@@ -708,7 +710,7 @@ fn parse_date_str(s : String) -> Result[LocalDate, String] {
 ///|
 fn frac_to_nanos(frac : String) -> Int {
   let s = if frac.length() >= 9 {
-    frac.substring(start=0, end=9)
+    frac[:9].to_owned()
   } else {
     let mut p = frac
     while p.length() < 9 {
@@ -724,29 +726,27 @@ fn frac_to_nanos(frac : String) -> Int {
 
 ///|
 fn parse_time_str(s : String) -> Result[LocalTime, String] {
-  if s.length() < 8 ||
-    s.substring(start=2, end=3) != ":" ||
-    s.substring(start=5, end=6) != ":" {
+  if s.length() < 8 || s[2:3] != ":" || s[5:6] != ":" {
     return Err("invalid time")
   }
-  let hour = match parse_int_component(s.substring(start=0, end=2)) {
+  let hour = match parse_int_component(s[:2].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid time")
   }
-  let minute = match parse_int_component(s.substring(start=3, end=5)) {
+  let minute = match parse_int_component(s[3:5].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid time")
   }
-  let second = match parse_int_component(s.substring(start=6, end=8)) {
+  let second = match parse_int_component(s[6:8].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid time")
   }
   let mut nanosecond = 0
   if s.length() > 8 {
-    if s.substring(start=8, end=9) != "." {
+    if s[8:9] != "." {
       return Err("invalid time")
     }
-    let frac = s.substring(start=9, end=s.length())
+    let frac = s[9:].to_owned()
     if !is_all_digits(frac) {
       return Err("invalid time")
     }
@@ -769,19 +769,19 @@ fn parse_offset_str(s : String) -> Result[Int, String] {
   if s == "Z" || s == "z" {
     return Ok(0)
   }
-  if s.length() != 6 || s.substring(start=3, end=4) != ":" {
+  if s.length() != 6 || s[3:4] != ":" {
     return Err("invalid offset")
   }
-  let sign = match s.substring(start=0, end=1) {
+  let sign = match s[:1] {
     "+" => 1
     "-" => -1
     _ => return Err("invalid offset")
   }
-  let hour = match parse_int_component(s.substring(start=1, end=3)) {
+  let hour = match parse_int_component(s[1:3].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid offset")
   }
-  let minute = match parse_int_component(s.substring(start=4, end=6)) {
+  let minute = match parse_int_component(s[4:6].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid offset")
   }
@@ -801,17 +801,17 @@ fn is_digit_char(s : String) -> Bool {
 /// `T`/`t` separator have been consumed.
 fn parse_datetime_rest(date : LocalDate, s : String) -> Result[Value, String] {
   let mut i = 8
-  if i < s.length() && s.substring(start=i, end=i + 1) == "." {
+  if i < s.length() && s[i:i + 1] == "." {
     i += 1
-    while i < s.length() && is_digit_char(s.substring(start=i, end=i + 1)) {
+    while i < s.length() && is_digit_char(s[i:i + 1].to_owned()) {
       i += 1
     }
   }
-  let time = match parse_time_str(s.substring(start=0, end=i)) {
+  let time = match parse_time_str(s[:i].to_owned()) {
     Ok(v) => v
     Err(_) => return Err("invalid time")
   }
-  let offset_str = s.substring(start=i, end=s.length())
+  let offset_str = s[i:].to_owned()
   if offset_str == "" {
     Ok(LocalDateTime(LocalDateTime::new(date, time)))
   } else {
@@ -837,11 +837,11 @@ fn parse_datetime_str(
     }
   }
   if looks_like_date(word) {
-    let date = match parse_date_str(word.substring(start=0, end=10)) {
+    let date = match parse_date_str(word[:10].to_owned()) {
       Ok(v) => v
       Err(e) => return Err(e)
     }
-    let rest = word.substring(start=10, end=word.length())
+    let rest = word[10:].to_owned()
     if rest == "" {
       return match following {
         Some(t) =>
@@ -852,11 +852,11 @@ fn parse_datetime_str(
         None => Ok(LocalDate(date))
       }
     }
-    let sep = rest.substring(start=0, end=1)
+    let sep = rest[:1]
     if sep != "T" && sep != "t" {
       return Err("invalid date-time")
     }
-    return parse_datetime_rest(date, rest.substring(start=1, end=rest.length()))
+    return parse_datetime_rest(date, rest[1:].to_owned())
   }
   Err("invalid date-time")
 }

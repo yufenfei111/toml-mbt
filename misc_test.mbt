@@ -49,7 +49,7 @@ test "misc: large float exponent" {
 ///|
 test "misc: space separator is invalid for offset datetime" {
   // TOML only allows a space separator for local date-time, not offset date-time.
-  assert_true(@toml-mbt.parse("d = 1979-05-27 07:32:00-07:00\n").is_err())
+  assert_true(@toml-mbt.parse("d = 1979-05-27 07:32:00-07:00\n") is Err(_))
 }
 
 ///|

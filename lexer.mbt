@@ -148,7 +148,7 @@ fn Lexer::lex_word(self : Lexer) -> String {
       }
     }
   }
-  self.input.substring(start=self.offsets[start], end=self.offsets[self.idx])
+  self.input[self.offsets[start]:self.offsets[self.idx]].to_owned()
 }
 
 ///|

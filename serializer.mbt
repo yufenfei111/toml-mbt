@@ -179,10 +179,10 @@ fn u_escape(code : Int) -> String {
   let d1 = (code >> 8) & 0xF
   let d2 = (code >> 4) & 0xF
   let d3 = code & 0xF
-  digits.substring(start=d0, end=d0 + 1) +
-  digits.substring(start=d1, end=d1 + 1) +
-  digits.substring(start=d2, end=d2 + 1) +
-  digits.substring(start=d3, end=d3 + 1)
+  digits[d0:d0 + 1].to_owned() +
+  digits[d1:d1 + 1].to_owned() +
+  digits[d2:d2 + 1].to_owned() +
+  digits[d3:d3 + 1].to_owned()
 }
 
 ///|
@@ -234,10 +234,10 @@ fn format_time(t : LocalTime) -> String {
 fn format_frac(nanos : Int) -> String {
   let s = pad(nanos, 9)
   let mut i = s.length()
-  while i > 1 && s.substring(start=i - 1, end=i) == "0" {
+  while i > 1 && s[i - 1:i] == "0" {
     i -= 1
   }
-  s.substring(start=0, end=i)
+  s[:i].to_owned()
 }
 
 ///|

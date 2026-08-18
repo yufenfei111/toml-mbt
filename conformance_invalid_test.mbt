@@ -11,6 +11,21 @@ fn must_fail(text : String) -> Unit {
 }
 
 ///|
+test "TOML 1.0 rejects Unicode bare keys" {
+  must_fail("中文 = 1")
+}
+
+///|
+test "TOML 1.0 rejects newline in inline table" {
+  must_fail("value = { a = 1,\n b = 2 }")
+}
+
+///|
+test "TOML 1.0 rejects trailing comma in inline table" {
+  must_fail("value = { a = 1, }")
+}
+
+///|
 test "invalid: duplicate key" {
   must_fail("a = 1\na = 2\n")
 }

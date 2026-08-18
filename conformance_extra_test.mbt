@@ -26,15 +26,6 @@ fn val(t : @toml-mbt.Table, k : String) -> @toml-mbt.Value {
 }
 
 ///|
-test "extra: unicode bare key" {
-  let t = ok("键 = 1\n")
-  match val(t, "键") {
-    Integer(v) => assert_eq(v, 1L)
-    _ => assert_true(false)
-  }
-}
-
-///|
 test "extra: empty multiline basic string" {
   let t = ok("s = \"\"\"\"\"\"\n")
   match val(t, "s") {
@@ -47,7 +38,7 @@ test "extra: empty multiline basic string" {
 test "extra: string with all simple escapes" {
   let t = ok("s = \"\\b\\t\\n\\f\\r\"\n")
   match val(t, "s") {
-    String(v) => assert_eq(v, "\x08\t\n\x0C\r")
+    String(v) => assert_eq(v, "\u{08}\t\n\u{0C}\r")
     _ => assert_true(false)
   }
 }
@@ -97,15 +88,6 @@ test "extra: array spanning multiple lines" {
   let t = ok("a = [\n  1,\n  2,\n  3,\n]\n")
   match val(t, "a") {
     Array(arr) => assert_eq(arr.length(), 3)
-    _ => assert_true(false)
-  }
-}
-
-///|
-test "extra: inline table spanning multiple lines" {
-  let t = ok("a = {\n  x = 1,\n  y = 2,\n}\n")
-  match val(t, "a") {
-    Table(p) => assert_eq(p.length(), 2)
     _ => assert_true(false)
   }
 }
@@ -247,7 +229,7 @@ test "invalid extra: key with trailing dot" {
 
 ///|
 test "invalid extra: string with unescaped control char" {
-  bad("s = \"a\x01b\"\n")
+  bad("s = \"a\u{01}b\"\n")
 }
 
 ///|

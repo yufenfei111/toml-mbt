@@ -11,12 +11,12 @@ test "parse local date" {
 
 ///|
 test "parse date rejects invalid month" {
-  assert_true(parse_date_str("1979-13-01").is_err())
+  assert_true(parse_date_str("1979-13-01") is Err(_))
 }
 
 ///|
 test "parse date rejects invalid day" {
-  assert_true(parse_date_str("2007-02-31").is_err())
+  assert_true(parse_date_str("2007-02-31") is Err(_))
 }
 
 ///|
@@ -27,7 +27,7 @@ test "parse date accepts leap day" {
 
 ///|
 test "parse date rejects non-leap leap day" {
-  assert_true(parse_date_str("1900-02-29").is_err())
+  assert_true(parse_date_str("1900-02-29") is Err(_))
 }
 
 ///|
@@ -53,7 +53,7 @@ test "parse time with nanosecond precision" {
 
 ///|
 test "parse time rejects invalid hour" {
-  assert_true(parse_time_str("24:00:00").is_err())
+  assert_true(parse_time_str("24:00:00") is Err(_))
 }
 
 ///|
@@ -73,7 +73,7 @@ test "parse offset positive" {
 
 ///|
 test "parse offset rejects invalid" {
-  assert_true(parse_offset_str("25:00").is_err())
+  assert_true(parse_offset_str("25:00") is Err(_))
 }
 
 ///|
@@ -133,5 +133,5 @@ test "parse local time only" {
 
 ///|
 test "parse date rejects missing day" {
-  assert_true(parse_date_str("1979-05").is_err())
+  assert_true(parse_date_str("1979-05") is Err(_))
 }

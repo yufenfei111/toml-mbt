@@ -66,7 +66,7 @@ test "parse emoji escape via scalar value" {
 
 ///|
 test "lone surrogate escape is invalid" {
-  assert_true(@toml-mbt.parse("s = \"\\uD83D\"\n").is_err())
+  assert_true(@toml-mbt.parse("s = \"\\uD83D\"\n") is Err(_))
 }
 
 ///|
