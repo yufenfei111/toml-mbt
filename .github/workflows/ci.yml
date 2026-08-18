@@ -5,25 +5,39 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  check-and-test:
+  check-test-and-conformance:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup MoonBit toolchain
-        uses: chawyehsu/setup-moonup@v1
+        uses: hustcer/setup-moonbit@v1.16
         with:
-          channel: stable
+          version: latest
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
 
       - name: Type check
-        run: moon check
+        run: moon check --deny-warn
 
       - name: Run tests
         run: moon test
 
-      - name: Build
-        run: moon build
+      - name: Build native toml-test decoder
+        run: moon build --release --target native cmd/toml-test-decoder
+
+      - name: Run official toml-test v2.2.0 decoder suite
+        run: >-
+          go run github.com/toml-lang/toml-test/v2/cmd/toml-test@v2.2.0
+          test -decoder ./scripts/toml-test-decoder.sh
 
       - name: Format check
         run: moon fmt --check

@@ -24,3 +24,7 @@ keywords = [ "toml", "parser", "serializer", "config" ]
 preferred_target = "wasm"
 
 description = "A TOML 1.0 parser and serializer for MoonBit"
+
+import {
+  "moonbitlang/async@0.20.1",
+}
