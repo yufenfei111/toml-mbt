@@ -4,3 +4,5 @@ target/
 target
 .mooncakes/
 .moonagent/
+.worktrees/
+.superpowers/sdd/
