@@ -30,14 +30,14 @@ pub fn validate_edits(
 ) -> Result[Array[TextEdit], EditError] {
   let source_length = utf8_byte_length(source)
   for edit in edits {
-    if edit.start_offset > edit.end_offset {
-      return Err(InvalidRange(edit.start_offset, edit.end_offset))
-    }
     if edit.start_offset < 0 ||
       edit.end_offset < 0 ||
       edit.start_offset > source_length ||
       edit.end_offset > source_length {
       return Err(OutOfBounds(edit.start_offset, edit.end_offset))
+    }
+    if edit.start_offset > edit.end_offset {
+      return Err(InvalidRange(edit.start_offset, edit.end_offset))
     }
     if !is_utf8_boundary(source, edit.start_offset) ||
       !is_utf8_boundary(source, edit.end_offset) {
@@ -144,11 +144,13 @@ fn is_utf8_boundary(source : String, target : Int) -> Bool {
 /// index, which is safe to use for MoonBit string slicing.
 fn byte_offset_to_code_unit(source : String, target : Int) -> Int {
   let mut byte_offset = 0
-  for code_unit, character in source.iter2() {
+  let mut code_unit_offset = 0
+  for _, character in source.iter2() {
     if byte_offset == target {
-      return code_unit
+      return code_unit_offset
     }
     byte_offset += utf8_width(character)
+    code_unit_offset += utf16_width(character)
   }
   source.length()
 }
@@ -164,5 +166,14 @@ fn utf8_width(character : Char) -> Int {
     3
   } else {
     4
+  }
+}
+
+///|
+fn utf16_width(character : Char) -> Int {
+  if character.to_int() <= 0xFFFF {
+    1
+  } else {
+    2
   }
 }

@@ -46,6 +46,12 @@ test "rejects a reversed range" {
 }
 
 ///|
+test "reports negative endpoints as out of bounds before reversed range validation" {
+  let edit = TextEdit::{ start_offset: -1, end_offset: -2, replacement: "x" }
+  assert_eq(apply_edits("alpha", [edit]), Err(OutOfBounds(-1, -2)))
+}
+
+///|
 test "rejects overlap before applying anything" {
   let source = "abcdef"
   let edits = [
@@ -102,6 +108,42 @@ test "uses UTF-8 byte offsets and permits unicode replacements" {
 test "rejects an offset inside a UTF-8 scalar" {
   let edit = TextEdit::{ start_offset: 2, end_offset: 4, replacement: "x" }
   assert_eq(apply_edits("a界b", [edit]), Err(InvalidRange(2, 4)))
+}
+
+///|
+test "replaces a supplementary UTF-8 scalar without leaving a surrogate half" {
+  let edit = TextEdit::{ start_offset: 1, end_offset: 5, replacement: "X" }
+  assert_eq(apply_edits("a😀b", [edit]), Ok("aXb"))
+}
+
+///|
+test "replaces text immediately after a supplementary UTF-8 scalar" {
+  let edit = TextEdit::{ start_offset: 5, end_offset: 6, replacement: "B" }
+  assert_eq(apply_edits("a😀b", [edit]), Ok("a😀B"))
+}
+
+///|
+test "inserts immediately before a supplementary UTF-8 scalar" {
+  let edit = TextEdit::{ start_offset: 1, end_offset: 1, replacement: "!" }
+  assert_eq(apply_edits("a😀b", [edit]), Ok("a!😀b"))
+}
+
+///|
+test "inserts immediately after a supplementary UTF-8 scalar" {
+  let edit = TextEdit::{ start_offset: 5, end_offset: 5, replacement: "!" }
+  assert_eq(apply_edits("a😀b", [edit]), Ok("a😀!b"))
+}
+
+///|
+test "maps byte offsets past multiple supplementary UTF-8 scalars" {
+  let edit = TextEdit::{ start_offset: 8, end_offset: 9, replacement: "X" }
+  assert_eq(apply_edits("😀😀b", [edit]), Ok("😀😀X"))
+}
+
+///|
+test "rejects byte offsets inside a supplementary UTF-8 scalar" {
+  let edit = TextEdit::{ start_offset: 2, end_offset: 5, replacement: "x" }
+  assert_eq(apply_edits("a😀b", [edit]), Err(InvalidRange(2, 5)))
 }
 
 ///|
