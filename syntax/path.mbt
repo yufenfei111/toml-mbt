@@ -263,6 +263,61 @@ fn source_span_at(
 }
 
 ///|
+/// Maps a 1-based source line and character column to the UTF-8 byte span of
+/// that character. Positions beyond the source are clamped to an empty EOF
+/// span, so callers can safely locate parser errors without constructing a
+/// `SourceSpan` themselves.
+pub fn source_span_at_position(
+  source : String,
+  requested_line : Int,
+  requested_column : Int,
+) -> SourceSpan {
+  let target_line = if requested_line < 1 { 1 } else { requested_line }
+  let target_column = if requested_column < 1 { 1 } else { requested_column }
+  let chars = source.to_array()
+  let mut offset = 0
+  let mut line = 1
+  let mut column = 1
+  let mut index = 0
+  while index < chars.length() {
+    let character = chars[index]
+    if line == target_line && column >= target_column {
+      let end_offset = if character == '\r' &&
+        index + 1 < chars.length() &&
+        chars[index + 1] == '\n' {
+        offset + 2
+      } else {
+        offset + path_utf8_width(character)
+      }
+      return { start_offset: offset, end_offset, line, column }
+    }
+    if line == target_line &&
+      column < target_column &&
+      (character == '\r' || character == '\n') {
+      return { start_offset: offset, end_offset: offset, line, column }
+    }
+    if character == '\r' &&
+      index + 1 < chars.length() &&
+      chars[index + 1] == '\n' {
+      offset += 2
+      index += 2
+      line += 1
+      column = 1
+    } else {
+      offset += path_utf8_width(character)
+      index += 1
+      if character == '\r' || character == '\n' {
+        line += 1
+        column = 1
+      } else {
+        column += 1
+      }
+    }
+  }
+  { start_offset: offset, end_offset: offset, line, column }
+}
+
+///|
 fn path_has_prefix(path : Array[String], prefix : Array[String]) -> Bool {
   if prefix.length() > path.length() {
     return false

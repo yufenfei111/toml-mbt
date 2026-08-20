@@ -1,0 +1,7 @@
+import {
+  "yufenfei111/toml-mbt",
+  "yufenfei111/toml-mbt/syntax",
+  "yufenfei111/toml-mbt/diagnostics",
+  "yufenfei111/toml-mbt/edit",
+  "moonbitlang/core/json",
+}

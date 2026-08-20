@@ -10,6 +10,8 @@ pub fn parse_key_path(String) -> Result[Array[String], SyntaxError]
 
 pub fn scan(String) -> ScanResult
 
+pub fn source_span_at_position(String, Int, Int) -> SourceSpan
+
 // Errors
 
 // Types and methods

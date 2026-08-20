@@ -186,3 +186,36 @@ test "table blocks expose exact insertion boundaries and editability" {
   assert_eq(detail[0].editable, false)
   assert_eq(detail[0].end_offset, source.length())
 }
+
+///|
+test "source positions map character columns to exact UTF-8 spans" {
+  let source = "a = 1\r\né = ]"
+  let first = source_span_at_position(source, 2, 1)
+  assert_eq(first.start_offset, 7)
+  assert_eq(first.end_offset, 9)
+  assert_eq(first.line, 2)
+  assert_eq(first.column, 1)
+  let invalid = source_span_at_position(source, 2, 5)
+  assert_eq(invalid.start_offset, 12)
+  assert_eq(invalid.end_offset, 13)
+  assert_eq(invalid.line, 2)
+  assert_eq(invalid.column, 5)
+}
+
+///|
+test "source positions clamp invalid coordinates to an EOF span" {
+  let eof = source_span_at_position("a = 1", 9, 9)
+  assert_eq(eof.start_offset, 5)
+  assert_eq(eof.end_offset, 5)
+  assert_eq(eof.line, 1)
+  assert_eq(eof.column, 6)
+}
+
+///|
+test "source positions treat CRLF as one complete newline span" {
+  let newline = source_span_at_position("a = 1\r\nnext = 2", 1, 6)
+  assert_eq(newline.start_offset, 5)
+  assert_eq(newline.end_offset, 7)
+  assert_eq(newline.line, 1)
+  assert_eq(newline.column, 6)
+}

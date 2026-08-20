@@ -9,6 +9,13 @@ pub fn decode_tagged_json(source : String) -> Result[String, TomlError] {
 }
 
 ///|
+/// Encodes one already-parsed TOML value with the same deterministic tagged
+/// JSON contract as `decode_tagged_json`.
+pub fn encode_tagged_value(value : Value) -> String {
+  decoder_value_to_string(value)
+}
+
+///|
 fn decoder_table_to_string(table : Table) -> String {
   let keys = table.keys().collect()
   keys.sort_by(decoder_compare_keys)

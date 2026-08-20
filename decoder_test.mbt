@@ -53,3 +53,14 @@ test "decoder rejects invalid TOML" {
     Err(_) => ()
   }
 }
+
+///|
+test "tagged value encoder sorts a selected nested table" {
+  let table = parse("[package]\nz = 1\na = 2\n").unwrap()
+  let value = table.get("package").unwrap()
+  assert_eq(
+    encode_tagged_value(value),
+    "{\"a\":{\"type\":\"integer\",\"value\":\"2\"}," +
+    "\"z\":{\"type\":\"integer\",\"value\":\"1\"}}",
+  )
+}

@@ -8,6 +8,8 @@ import {
 // Values
 pub fn decode_tagged_json(String) -> Result[String, TomlError]
 
+pub fn encode_tagged_value(Value) -> String
+
 pub fn parse(String) -> Result[Map[String, Value], TomlError]
 
 pub fn serialize(Map[String, Value]) -> String
