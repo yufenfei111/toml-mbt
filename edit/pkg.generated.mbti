@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "yufenfei111/toml-mbt/edit"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn apply_edits(String, Array[TextEdit]) -> Result[String, EditError]
+
+pub fn validate_edits(String, Array[TextEdit]) -> Result[Array[TextEdit], EditError]
+
+// Errors
+
+// Types and methods
+pub(all) enum EditError {
+  InvalidRange(Int, Int)
+  OutOfBounds(Int, Int)
+  Overlap(TextEdit, TextEdit)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextEdit {
+  start_offset : Int
+  end_offset : Int
+  replacement : String
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
