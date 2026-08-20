@@ -25,9 +25,31 @@ pub(all) struct Diagnostic {
 ///|
 /// Returns a deterministic copy sorted by start offset, end offset, and code.
 pub fn sort_diagnostics(items : Array[Diagnostic]) -> Array[Diagnostic] {
-  let sorted = items.copy()
-  sorted.sort_by(compare_diagnostics)
-  sorted
+  let indexed : Array[IndexedDiagnostic] = []
+  for index in 0..<items.length() {
+    indexed.push({ item: items[index], index })
+  }
+  indexed.sort_by(compare_indexed_diagnostics)
+  indexed.map(indexed_item => indexed_item.item)
+}
+
+///|
+priv struct IndexedDiagnostic {
+  item : Diagnostic
+  index : Int
+}
+
+///|
+fn compare_indexed_diagnostics(
+  left : IndexedDiagnostic,
+  right : IndexedDiagnostic,
+) -> Int {
+  let order = compare_diagnostics(left.item, right.item)
+  if order != 0 {
+    order
+  } else {
+    left.index.compare(right.index)
+  }
 }
 
 ///|
@@ -68,7 +90,32 @@ fn compare_code_points(left : String, right : String) -> Int {
 /// range. The excerpt is always a single physical line without line endings.
 pub fn render_text(file : String, source : String, item : Diagnostic) -> String {
   let (excerpt, caret) = source_excerpt(source, item.span)
-  "\{file}:\{display_line(item.span.line)}:\{display_column(item.span.column)}: \{severity_name(item.severity)}[\{item.code}]: \{item.message}\n\{excerpt}\n\{caret}"
+  "\{sanitize_text_field(file)}:\{display_line(item.span.line)}:\{display_column(item.span.column)}: \{severity_name(item.severity)}[\{sanitize_text_field(item.code)}]: \{sanitize_text_field(item.message)}\n\{excerpt}\n\{caret}"
+}
+
+///|
+/// Renders header fields on one physical line while preserving readable
+/// representations of control characters.
+fn sanitize_text_field(value : String) -> String {
+  let output = StringBuilder(size_hint=value.length())
+  for character in value {
+    match character {
+      '\r' => output.write_string("\\r")
+      '\n' => output.write_string("\\n")
+      '\t' => output.write_string("\\t")
+      _ => {
+        let code = character.to_int()
+        if code < 0x20 || code == 0x7F {
+          output.write_string("\\u{")
+          output.write_string(code.to_string(radix=16))
+          output.write_char('}')
+        } else {
+          output.write_char(character)
+        }
+      }
+    }
+  }
+  output.to_string()
 }
 
 ///|
@@ -117,10 +164,6 @@ fn source_excerpt(
         chars[line_end] != '\r' {
     line_end += 1
   }
-  let mut prefix = ""
-  for index in line_start..<start {
-    prefix += if chars[index] == '\t' { "    " } else { " " }
-  }
   let highlighted_end = if end < start {
     start
   } else if end > line_end {
@@ -128,16 +171,64 @@ fn source_excerpt(
   } else {
     end
   }
+  let start_column = visual_width(chars, line_start, start, 0)
   let caret_count = if highlighted_end > start {
-    highlighted_end - start
+    visual_width(chars, start, highlighted_end, start_column)
   } else {
     1
   }
-  let mut carets = ""
-  for _ in 0..<caret_count {
-    carets += "^"
+  (
+    expand_tabs(chars, line_start, line_end, 0),
+    " ".repeat(start_column) + "^".repeat(caret_count),
+  )
+}
+
+///|
+/// Returns the visual width of a source range when tabs stop every four
+/// columns. `column` is the visual column at the beginning of the range.
+fn visual_width(
+  chars : Array[Char],
+  start : Int,
+  end : Int,
+  column : Int,
+) -> Int {
+  let mut current_column = column
+  for index in start..<end {
+    if chars[index] == '\t' {
+      current_column += tab_width(current_column)
+    } else {
+      current_column += 1
+    }
   }
-  (String::from_iter(chars[line_start:line_end].iter()), prefix + carets)
+  current_column - column
+}
+
+///|
+fn expand_tabs(
+  chars : Array[Char],
+  start : Int,
+  end : Int,
+  column : Int,
+) -> String {
+  let output = StringBuilder(size_hint=end - start)
+  let mut current_column = column
+  for index in start..<end {
+    let character = chars[index]
+    if character == '\t' {
+      let width = tab_width(current_column)
+      output.write_string(" ".repeat(width))
+      current_column += width
+    } else {
+      output.write_char(character)
+      current_column += 1
+    }
+  }
+  output.to_string()
+}
+
+///|
+fn tab_width(column : Int) -> Int {
+  4 - column % 4
 }
 
 ///|
