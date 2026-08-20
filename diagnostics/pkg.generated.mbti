@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "yufenfei111/toml-mbt/diagnostics"
+
+import {
+  "moonbitlang/core/debug",
+  "yufenfei111/toml-mbt/syntax",
+}
+
+// Values
+pub fn render_json(Array[Diagnostic]) -> String
+
+pub fn render_text(String, String, Diagnostic) -> String
+
+pub fn sort_diagnostics(Array[Diagnostic]) -> Array[Diagnostic]
+
+// Errors
+
+// Types and methods
+pub(all) struct Diagnostic {
+  severity : Severity
+  code : String
+  message : String
+  span : @syntax.SourceSpan
+  suggestion : SuggestedEdit?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Severity {
+  Error
+  Warning
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SuggestedEdit {
+  span : @syntax.SourceSpan
+  replacement : String
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
