@@ -189,14 +189,16 @@ test "scanner fix resets multiline continuation escape after lone CR" {
 }
 
 ///|
-test "scanner fix marks physical newline in single-line basic string invalid" {
+test "scanner fix recovers from physical newline before a later quote" {
   let source = "value = \"a\n\"\nnext = 1\n"
   let result = scan(source)
-  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements.length(), 3)
   assert_eq(result.document.statements[0].kind, StatementKind::Invalid)
-  assert_eq(result.document.statements[0].text(source), "value = \"a\n\"\n")
-  assert_eq(result.document.statements[1].text(source), "next = 1\n")
-  assert_eq(result.errors.length(), 1)
+  assert_eq(result.document.statements[0].text(source), "value = \"a\n")
+  assert_eq(result.document.statements[1].kind, StatementKind::Invalid)
+  assert_eq(result.document.statements[1].text(source), "\"\n")
+  assert_eq(result.document.statements[2].text(source), "next = 1\n")
+  assert_eq(result.errors.length(), 2)
   assert_eq(rebuilt_statement_text(source, result), source)
 }
 
@@ -249,5 +251,74 @@ test "scanner fix preserves lone CR statement boundaries" {
   assert_eq(result.document.statements.length(), 2)
   assert_eq(result.document.statements[0].text(source), "first = 1\r")
   assert_eq(result.document.statements[1].text(source), "second = 2\r")
+  assert_eq(rebuilt_statement_text(source, result), source)
+}
+
+///|
+test "scanner fix rejects six quote multiline basic closer without swallowing next" {
+  let source = "value = \"\"\"x\"\"\"\"\"\"\nnext = 1\n"
+  let result = scan(source)
+  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements[0].kind, StatementKind::Invalid)
+  assert_eq(
+    result.document.statements[0].text(source),
+    "value = \"\"\"x\"\"\"\"\"\"\n",
+  )
+  assert_eq(result.document.statements[1].kind, StatementKind::KeyValue)
+  assert_eq(result.document.statements[1].text(source), "next = 1\n")
+  assert_eq(result.errors.length(), 1)
+  assert_eq(result.errors[0].span.start_offset, 12)
+  assert_eq(result.errors[0].span.end_offset, 13)
+  assert_eq(rebuilt_statement_text(source, result), source)
+}
+
+///|
+test "scanner fix rejects six quote multiline literal closer without swallowing next" {
+  let source = "value = '''x''''''\nnext = 1\n"
+  let result = scan(source)
+  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements[0].kind, StatementKind::Invalid)
+  assert_eq(result.document.statements[0].text(source), "value = '''x''''''\n")
+  assert_eq(result.document.statements[1].kind, StatementKind::KeyValue)
+  assert_eq(result.document.statements[1].text(source), "next = 1\n")
+  assert_eq(result.errors.length(), 1)
+  assert_eq(result.errors[0].span.start_offset, 12)
+  assert_eq(result.errors[0].span.end_offset, 13)
+  assert_eq(rebuilt_statement_text(source, result), source)
+}
+
+///|
+test "scanner fix recovers after LF in unterminated single-line basic string" {
+  let source = "value = \"bad\nnext = 1\n"
+  let result = scan(source)
+  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements[0].kind, StatementKind::Invalid)
+  assert_eq(result.document.statements[0].text(source), "value = \"bad\n")
+  assert_eq(result.document.statements[0].span.end_offset, 13)
+  assert_eq(result.document.statements[1].kind, StatementKind::KeyValue)
+  assert_eq(result.document.statements[1].text(source), "next = 1\n")
+  assert_eq(result.errors.length(), 1)
+  assert_eq(result.errors[0].span.start_offset, 12)
+  assert_eq(result.errors[0].span.end_offset, 13)
+  assert_eq(result.errors[0].span.line, 1)
+  assert_eq(result.errors[0].span.column, 13)
+  assert_eq(rebuilt_statement_text(source, result), source)
+}
+
+///|
+test "scanner fix recovers after CRLF in unterminated single-line literal string" {
+  let source = "value = 'bad\r\nnext = 1\r\n"
+  let result = scan(source)
+  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements[0].kind, StatementKind::Invalid)
+  assert_eq(result.document.statements[0].text(source), "value = 'bad\r\n")
+  assert_eq(result.document.statements[0].span.end_offset, 14)
+  assert_eq(result.document.statements[1].kind, StatementKind::KeyValue)
+  assert_eq(result.document.statements[1].text(source), "next = 1\r\n")
+  assert_eq(result.errors.length(), 1)
+  assert_eq(result.errors[0].span.start_offset, 12)
+  assert_eq(result.errors[0].span.end_offset, 14)
+  assert_eq(result.errors[0].span.line, 1)
+  assert_eq(result.errors[0].span.column, 13)
   assert_eq(rebuilt_statement_text(source, result), source)
 }

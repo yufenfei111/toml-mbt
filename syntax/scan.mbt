@@ -190,6 +190,8 @@ pub fn scan(source : String) -> ScanResult {
           message: "newline in single-line string",
           span: make_span(offset, offset + width, line, column),
         })
+        quote = Outside
+        escaped = false
       } else if quote == Basic(true) && escaped {
         escaped = false
       }
@@ -301,6 +303,13 @@ pub fn scan(source : String) -> ScanResult {
           column += 1
         } else if multiline && is_triple(chars, index, '"') {
           let length = quote_run_length(chars, index, '"')
+          if length > 5 {
+            statement_invalid = true
+            errors.push({
+              message: "too many quotes in multiline string closing delimiter",
+              span: make_span(offset, offset + length - 5, line, column),
+            })
+          }
           quote = Outside
           offset += length
           index += length
@@ -318,6 +327,13 @@ pub fn scan(source : String) -> ScanResult {
       Literal(multiline) =>
         if multiline && is_triple(chars, index, '\'') {
           let length = quote_run_length(chars, index, '\'')
+          if length > 5 {
+            statement_invalid = true
+            errors.push({
+              message: "too many quotes in multiline string closing delimiter",
+              span: make_span(offset, offset + length - 5, line, column),
+            })
+          }
           quote = Outside
           offset += length
           index += length
