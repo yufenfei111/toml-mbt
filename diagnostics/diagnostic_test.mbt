@@ -77,6 +77,25 @@ test "text rendering sanitizes header controls without adding physical lines" {
 }
 
 ///|
+test "text rendering escapes C1 header controls" {
+  let source_span = @syntax.scan("x = ]").errors[0].span
+  let item : Diagnostic = {
+    severity: Severity::Error,
+    code: "WB\u0085\u009F",
+    message: "message\u0085\u009F",
+    span: source_span,
+    suggestion: None,
+  }
+  let output = render_text("file\u0085\u009F.toml", "x = ]", item)
+  assert_eq(output.split("\n").to_array().length(), 3)
+  assert_true(output.contains("file\\u{85}\\u{9f}.toml"))
+  assert_true(output.contains("WB\\u{85}\\u{9f}"))
+  assert_true(output.contains("message\\u{85}\\u{9f}"))
+  assert_true(!output.contains("\u0085"))
+  assert_true(!output.contains("\u009F"))
+}
+
+///|
 test "text rendering expands tabs at four-column stops for excerpts and carets" {
   let invalid_source = "\tkey\t= ]\n"
   let invalid_span = @syntax.scan(invalid_source).errors[0].span

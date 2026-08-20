@@ -105,7 +105,7 @@ fn sanitize_text_field(value : String) -> String {
       '\t' => output.write_string("\\t")
       _ => {
         let code = character.to_int()
-        if code < 0x20 || code == 0x7F {
+        if code < 0x20 || (code >= 0x7F && code <= 0x9F) {
           output.write_string("\\u{")
           output.write_string(code.to_string(radix=16))
           output.write_char('}')
