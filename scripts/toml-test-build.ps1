@@ -28,15 +28,6 @@ function New-DecoderTempDirectory {
   throw "could not allocate a decoder temporary directory under $tempBase"
 }
 
-function Test-DecoderIsFresh {
-  if (-not (Test-Path -LiteralPath $decoder)) { return $false }
-  $binaryTime = (Get-Item -LiteralPath $decoder).LastWriteTimeUtc
-  $sources = Get-ChildItem -LiteralPath $repoRoot -Recurse -File | Where-Object {
-    $_.Extension -eq '.mbt' -or $_.Name -eq 'moon.mod' -or $_.Name -eq 'moon.pkg'
-  }
-  return -not ($sources | Where-Object { $_.LastWriteTimeUtc -gt $binaryTime })
-}
-
 function Invoke-DecoderBuild {
   $previousErrorAction = $ErrorActionPreference
   try {
@@ -79,7 +70,7 @@ try {
     if (-not $acquired) { throw 'timed out waiting for the decoder build lock' }
     Push-Location -LiteralPath $repoRoot
     try {
-      if (-not (Test-DecoderIsFresh)) { Invoke-DecoderBuild }
+      Invoke-DecoderBuild
     } finally {
       Pop-Location
     }

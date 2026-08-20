@@ -7,6 +7,7 @@ $cmdLauncher = Join-Path $repoRoot 'scripts/toml-test-decoder.cmd'
 $shLauncher = Join-Path $repoRoot 'scripts/toml-test-decoder.sh'
 $shExe = 'C:/Program Files/Git/usr/bin/sh.exe'
 $tempRoot = Join-Path $env:TEMP ('toml-test-launcher-tests-' + [guid]::NewGuid().ToString('N'))
+$shimRoot = Join-Path $env:TEMP ('toml-test-moon-shim-' + [guid]::NewGuid().ToString('N'))
 $expectedValid = '{"a":{"type":"integer","value":"1"}}'
 
 function Assert-Equal($Actual, $Expected, [string]$Message) {
@@ -60,6 +61,7 @@ function Assert-CleanTemp {
 }
 
 New-Item -ItemType Directory -Path $tempRoot | Out-Null
+New-Item -ItemType Directory -Path $shimRoot | Out-Null
 try {
   Push-Location $repoRoot
   try { & moon build --release --target native cmd/toml-test-decoder | Out-Null } finally { Pop-Location }
@@ -77,26 +79,29 @@ try {
     Assert-CleanTemp
   }
 
-  $source = Join-Path $repoRoot 'cmd/toml-test-decoder/main.mbt'
-  $originalSourceTime = (Get-Item -LiteralPath $source).LastWriteTimeUtc
-  try {
-    $beforeRebuild = (Get-Item -LiteralPath $decoder).LastWriteTimeUtc
-    (Get-Item -LiteralPath $source).LastWriteTimeUtc = $beforeRebuild.AddSeconds(2)
-    $stale = Invoke-Launcher cmd "a = 1`n"
-    Assert-Equal $stale.Stdout $expectedValid '.cmd should execute after a source freshness rebuild'
-    Assert-True ((Get-Item -LiteralPath $decoder).LastWriteTimeUtc -gt $beforeRebuild) '.cmd should rebuild a healthy stale decoder'
-
-    $beforeNoBuild = (Get-Item -LiteralPath $decoder).LastWriteTimeUtc
-    (Get-Item -LiteralPath $source).LastWriteTimeUtc = $beforeNoBuild.AddSeconds(2)
-    $noBuild = Invoke-Launcher cmd "a = 1`n" @{ TOML_TEST_DECODER_NO_BUILD = '1' }
-    Assert-Equal $noBuild.Stdout $expectedValid '.cmd no-build mode should execute the existing decoder'
-    Assert-Equal (Get-Item -LiteralPath $decoder).LastWriteTimeUtc $beforeNoBuild '.cmd no-build mode should not rebuild'
-    Assert-CleanTemp
-  } finally {
-    (Get-Item -LiteralPath $source).LastWriteTimeUtc = $originalSourceTime
+  $buildLog = Join-Path $shimRoot 'build.log'
+  $realMoon = (Get-Command moon -CommandType Application).Source
+  $shimPath = Join-Path $shimRoot 'moon.cmd'
+  Set-Content -LiteralPath $shimPath -NoNewline -Value "@echo off`necho build>> `"%TOML_TEST_DECODER_BUILD_LOG%`"`ncall `"%TOML_TEST_DECODER_REAL_MOON%`" %*`nexit /b %ERRORLEVEL%"
+  $buildEnvironment = @{
+    PATH = $shimRoot + [IO.Path]::PathSeparator + $env:PATH
+    TOML_TEST_DECODER_BUILD_LOG = $buildLog
+    TOML_TEST_DECODER_REAL_MOON = $realMoon
   }
+  $normal = Invoke-Launcher cmd "a = 1`n" $buildEnvironment
+  Assert-Equal $normal.Stdout $expectedValid '.cmd normal mode should execute after its incremental build'
+  Assert-True (Test-Path -LiteralPath $buildLog) '.cmd normal mode should invoke Moon even for a healthy decoder'
+
+  Remove-Item -LiteralPath $buildLog -Force
+  $noBuildEnvironment = $buildEnvironment.Clone()
+  $noBuildEnvironment['TOML_TEST_DECODER_NO_BUILD'] = '1'
+  $noBuild = Invoke-Launcher cmd "a = 1`n" $noBuildEnvironment
+  Assert-Equal $noBuild.Stdout $expectedValid '.cmd no-build mode should execute the existing decoder'
+  Assert-True (-not (Test-Path -LiteralPath $buildLog)) '.cmd no-build mode should not invoke Moon'
+  Assert-CleanTemp
 } finally {
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $shimRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Output 'launcher regression checks passed'
