@@ -11,7 +11,7 @@
 
 name = "yufenfei111/toml-mbt"
 
-version = "0.1.0"
+version = "0.2.0"
 
 readme = "README.md"
 
@@ -19,11 +19,11 @@ repository = "https://github.com/yufenfei111/toml-mbt"
 
 license = "Apache-2.0"
 
-keywords = [ "toml", "parser", "serializer", "config" ]
+keywords = [ "toml", "workbench", "lossless", "diagnostics", "editor", "cli" ]
 
 preferred_target = "wasm"
 
-description = "A TOML 1.0 parser and serializer for MoonBit"
+description = "Format-preserving TOML inspection and safe editing workbench for MoonBit"
 
 import {
   "moonbitlang/async@0.20.1",

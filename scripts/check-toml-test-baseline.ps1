@@ -59,8 +59,8 @@ try {
   if (($failureCount -eq 0 -and $Status -ne 0) -or ($failureCount -gt 0 -and $Status -ne 1)) {
     throw "toml-test infrastructure failure: exit status $Status disagrees with $failureCount failures"
   }
-  if ($validPassed -lt 177 -or $invalidPassed -lt 421) {
-    throw "toml-test regression: valid=$validPassed (minimum 177), invalid=$invalidPassed (minimum 421)"
+  if ($validPassed -lt 181 -or $invalidPassed -lt 421) {
+    throw "toml-test regression: valid=$validPassed (minimum 181), invalid=$invalidPassed (minimum 421)"
   }
 
   Write-Output "toml-test baseline accepted: valid=$validPassed, invalid=$invalidPassed, status=$Status"

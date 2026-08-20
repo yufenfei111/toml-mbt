@@ -10,7 +10,7 @@ minimal text patches, and the `check/get/set/remove` workflow.
 
 本项目面向“只改一个配置值，不重排整份文件”的场景。默认编辑只把完整候选文本输出到标准输出；只有显式传入 `--write` 才会替换文件。当前语法目标是 TOML 1.0，不开启 TOML 1.1 扩展；尚未通过的 1.0 用例在下文如实列出。
 
-> 发布状态：原解析器模块 `yufenfei111/toml-mbt@0.1.0` 已可在 [mooncakes.io](https://mooncakes.io/docs/#/yufenfei111/toml-mbt/) 查到；本页描述的 Workbench 包和原生 CLI 目前应从本仓库构建，尚未作为新版本发布。
+> 发布状态：原解析器模块 [`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；仓库元数据已为 Workbench 准备 `0.2.0`，但该版本尚未发布，当前应从源码构建。**在赛事验收前发布 `0.2.0` 并回填可验证链接是必做事项。**
 
 ## 三分钟演示
 
@@ -100,14 +100,14 @@ Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 - “格式保留”指未触及文本按字节保留和局部最小补丁，不是任意文档的自动格式化器。
 - `--write` 的 MVP 信任稳定、可信、非符号链接的目标路径，且假设没有并发写入者或目录/链接交换。它不是敌对文件系统事务协议。
 - 临时文件从首字节起以 `0600` 请求创建。Unix 替换后权限可能收窄为 `0600`；当前 async API 不能复制原文件的 mode、owner、扩展属性或 Windows ACL。Windows 会忽略 mode 参数并采用目录 ACL 行为。
-- Workbench 新包与 CLI 尚未发布到 mooncakes.io 新版本，当前从源码运行。
+- Workbench `0.2.0` 已完成模块元数据准备但尚未发布，当前从源码运行；在赛事验收前发布并回填链接是必做事项。
 
 ## 路线图（尚未完成）
 
 - 修复剩余 TOML 1.0 一致性差距及 native decoder 异常终止；
 - 为受支持平台增加经审查的文件元数据保留层和并发修改检测；
 - 增加机器可读 patch/diff 输出，并扩大数组表的无歧义编辑范围；
-- 完成 Workbench 新版本的 mooncakes.io 发布和独立 CLI 安装说明。
+- **验收前必做：** 发布 Workbench `0.2.0` 到 mooncakes.io、回填版本链接并复核独立 CLI 安装说明。
 
 ## 与现有项目的关系
 

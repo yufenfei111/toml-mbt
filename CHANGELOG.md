@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.2.0] - Unreleased
+
+Workbench `0.2.0` is prepared in repository metadata but has not been published to mooncakes.io. Publishing it and recording the resulting version link is required before contest validation.
 
 ### Changed — compatibility corrections
 

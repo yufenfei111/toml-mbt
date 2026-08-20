@@ -2,7 +2,7 @@
 
 MoonBit TOML Workbench 的包级接口说明。根包保留独立解析器原型的兼容 API；新增包提供无损源文本、诊断、编辑与纯命令层。原生文件 I/O 位于 `cmd/workbench`，不属于可移植库 API。
 
-发布状态：`yufenfei111/toml-mbt@0.1.0` 已发布；以下 Workbench 新接口目前对应仓库源码，尚未作为新版本发布。
+发布状态：[`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；仓库已将模块版本准备为 Workbench `0.2.0`，但尚未发布。在赛事验收前发布并回填可验证版本链接是必做事项。
 
 ## 根包：语义兼容层
 
