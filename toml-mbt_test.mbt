@@ -90,6 +90,19 @@ test "parse array of tables" {
 }
 
 ///|
+test "parse keeps later keys aligned after a supplementary string scalar" {
+  let table = @toml-mbt.parse("emoji = \"😀\"\ntitle = \"new\"\n").unwrap()
+  match table.get("emoji") {
+    Some(String(value)) => assert_eq(value, "😀")
+    _ => fail("expected emoji string")
+  }
+  match table.get("title") {
+    Some(String(value)) => assert_eq(value, "new")
+    _ => fail("expected title string")
+  }
+}
+
+///|
 test "round-trip preserves structure" {
   let text = "title = \"demo\"\ncount = 7\nenabled = true\n"
   let table = @toml-mbt.parse(text).unwrap()

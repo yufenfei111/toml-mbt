@@ -17,9 +17,11 @@ pub struct Document {
   source : String
   statements : Array[Statement]
   entries : Array[KeyValueEntry]
+  tables : Array[TableBlock]
 }
 pub fn Document::find_entries(Self, Array[String]) -> Array[KeyValueEntry]
 pub fn Document::find_entry(Self, Array[String]) -> KeyValueEntry?
+pub fn Document::find_table_blocks(Self, Array[String]) -> Array[TableBlock]
 
 pub struct KeyValueEntry {
   path : Array[String]
@@ -60,6 +62,14 @@ pub struct SyntaxError {
   message : String
   span : SourceSpan
 } derive(Eq, @debug.Debug)
+
+pub struct TableBlock {
+  path : Array[String]
+  header_span : SourceSpan
+  end_offset : Int
+  array : Bool
+  editable : Bool
+} derive(@debug.Debug)
 
 // Type aliases
 

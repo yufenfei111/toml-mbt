@@ -8,6 +8,10 @@ import {
 // Values
 pub fn apply_edits(String, Array[TextEdit]) -> Result[String, EditError]
 
+pub fn remove_key(String, Array[String]) -> Result[String, OperationError]
+
+pub fn set_value(String, Array[String], String) -> Result[String, OperationError]
+
 pub fn validate_edits(String, Array[TextEdit]) -> Result[Array[TextEdit], EditError]
 
 // Errors
@@ -18,6 +22,16 @@ pub(all) enum EditError {
   OutOfBounds(Int, Int)
   Overlap(TextEdit, TextEdit)
 } derive(Eq, @debug.Debug)
+
+pub(all) enum OperationError {
+  InvalidPath(String)
+  InvalidValue(String)
+  NotFound(Array[String])
+  AmbiguousPath(Array[String])
+  UnsupportedInsertion(Array[String])
+  ResultIsInvalid(String)
+  TextEdit(EditError)
+} derive(@debug.Debug)
 
 pub(all) struct TextEdit {
   start_offset : Int

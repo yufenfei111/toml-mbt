@@ -110,6 +110,19 @@ test "scanner source spans are UTF-8 byte offsets" {
 }
 
 ///|
+test "scanner text and index stay aligned after a supplementary scalar" {
+  let source = "emoji = \"😀\"\ntitle = \"old\"\n"
+  let result = scan(source)
+  assert_eq(result.errors.length(), 0)
+  assert_eq(result.document.statements.length(), 2)
+  assert_eq(result.document.statements[0].text(source), "emoji = \"😀\"\n")
+  assert_eq(result.document.statements[1].text(source), "title = \"old\"\n")
+  let entry = result.document.find_entry(["title"]).unwrap()
+  assert_eq(entry.value_span.start_offset, 23)
+  assert_eq(entry.value_span.end_offset, 28)
+}
+
+///|
 fn rebuilt_statement_text(source : String, result : ScanResult) -> String {
   let mut rebuilt = ""
   for statement in result.document.statements {

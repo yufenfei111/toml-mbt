@@ -21,11 +21,13 @@ struct Lexer {
 fn build_chars(input : String) -> (Array[Char], Array[Int]) {
   let chars : Array[Char] = []
   let offsets : Array[Int] = []
-  for off, c in input.iter2() {
+  let mut code_unit_offset = 0
+  for c in input {
     chars.push(c)
-    offsets.push(off)
+    offsets.push(code_unit_offset)
+    code_unit_offset += if c.to_int() <= 0xFFFF { 1 } else { 2 }
   }
-  offsets.push(input.length())
+  offsets.push(code_unit_offset)
   (chars, offsets)
 }
 

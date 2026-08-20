@@ -24,11 +24,13 @@ fn utf8_width(c : Char) -> Int {
 ///|
 fn byte_offset_to_code_unit(source : String, target : Int) -> Int {
   let mut byte_offset = 0
-  for code_unit, c in source.iter2() {
+  let mut code_unit_offset = 0
+  for c in source {
     if byte_offset == target {
-      return code_unit
+      return code_unit_offset
     }
     byte_offset += utf8_width(c)
+    code_unit_offset += if c.to_int() <= 0xFFFF { 1 } else { 2 }
   }
   source.length()
 }
@@ -373,6 +375,6 @@ pub fn scan(source : String) -> ScanResult {
       errors.push({ message: "invalid statement", span })
     }
   }
-  let entries = index_entries(source, statements)
-  { document: { source, statements, entries }, errors }
+  let (entries, tables) = index_document(source, statements)
+  { document: { source, statements, entries, tables }, errors }
 }

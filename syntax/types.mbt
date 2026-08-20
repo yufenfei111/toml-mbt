@@ -45,11 +45,26 @@ pub struct KeyValueEntry {
 } derive(Debug)
 
 ///|
+/// One explicit table header and the source block governed by it.
+///
+/// `end_offset` is the UTF-8 byte offset of the next table header or EOF.
+/// Normal tables nested below an array table remain discoverable but are not
+/// editable, because their instance is not uniquely determined.
+pub struct TableBlock {
+  path : Array[String]
+  header_span : SourceSpan
+  end_offset : Int
+  array : Bool
+  editable : Bool
+} derive(Debug)
+
+///|
 /// The scanner's lossless view of one source document.
 pub struct Document {
   source : String
   statements : Array[Statement]
   entries : Array[KeyValueEntry]
+  tables : Array[TableBlock]
 }
 
 ///|

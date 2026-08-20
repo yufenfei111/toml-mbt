@@ -536,17 +536,38 @@ fn byte_length(chars : Array[Char], start : Int, end : Int) -> Int {
 }
 
 ///|
-fn index_entries(
+fn table_block_end(
   source : String,
   statements : Array[Statement],
-) -> Array[KeyValueEntry] {
+  header_index : Int,
+) -> Int {
+  let mut index = header_index + 1
+  while index < statements.length() {
+    match statements[index].kind {
+      TableHeader | ArrayTableHeader =>
+        return statements[index].span.start_offset
+      _ => index += 1
+    }
+  }
+  let chars = source.to_array()
+  byte_length(chars, 0, chars.length())
+}
+
+///|
+fn index_document(
+  source : String,
+  statements : Array[Statement],
+) -> (Array[KeyValueEntry], Array[TableBlock]) {
   let entries : Array[KeyValueEntry] = []
+  let tables : Array[TableBlock] = []
   let array_tables : Array[Array[String]] = []
   let mut table_path : Array[String] = []
   let mut table_span : SourceSpan? = None
   let mut editable = true
   let mut context_known = true
-  for statement in statements {
+  let mut statement_index = 0
+  while statement_index < statements.length() {
+    let statement = statements[statement_index]
     match statement.kind {
       KeyValue =>
         if context_known {
@@ -561,6 +582,13 @@ fn index_entries(
             table_path = path
             table_span = Some(statement.span)
             context_known = true
+            tables.push({
+              path: path.copy(),
+              header_span: statement.span,
+              end_offset: table_block_end(source, statements, statement_index),
+              array: false,
+              editable,
+            })
           }
           None => {
             table_path = []
@@ -577,6 +605,13 @@ fn index_entries(
             table_span = Some(statement.span)
             editable = false
             context_known = true
+            tables.push({
+              path: path.copy(),
+              header_span: statement.span,
+              end_offset: table_block_end(source, statements, statement_index),
+              array: true,
+              editable: false,
+            })
           }
           None => {
             table_path = []
@@ -587,8 +622,9 @@ fn index_entries(
         }
       Trivia | Invalid => ()
     }
+    statement_index += 1
   }
-  entries
+  (entries, tables)
 }
 
 ///|
@@ -616,4 +652,19 @@ pub fn Document::find_entry(
   } else {
     None
   }
+}
+
+///|
+/// Returns every explicit table block whose decoded header path is `path`.
+pub fn Document::find_table_blocks(
+  self : Document,
+  path : Array[String],
+) -> Array[TableBlock] {
+  let matches : Array[TableBlock] = []
+  for table in self.tables {
+    if table.path == path {
+      matches.push(table)
+    }
+  }
+  matches
 }

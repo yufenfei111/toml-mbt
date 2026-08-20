@@ -159,3 +159,30 @@ test "array table entries remain indexed but ambiguous duplicates are not editab
   assert_eq(other.editable, true)
   assert_eq(document.find_entries(["missing"]).length(), 0)
 }
+
+///|
+test "table blocks expose exact insertion boundaries and editability" {
+  let source = "root = 1\n[normal]\nvalue = 2\n[[items]]\nname = \"one\"\n[items.detail]\n"
+  let document = scan(source).document
+  let normal = document.find_table_blocks(["normal"])
+  assert_eq(normal.length(), 1)
+  assert_eq(normal[0].array, false)
+  assert_eq(normal[0].editable, true)
+  assert_eq(
+    source[normal[0].header_span.start_offset:normal[0].header_span.end_offset],
+    "[normal]\n",
+  )
+  assert_eq(
+    source[normal[0].header_span.start_offset:normal[0].end_offset],
+    "[normal]\nvalue = 2\n",
+  )
+  let items = document.find_table_blocks(["items"])
+  assert_eq(items.length(), 1)
+  assert_eq(items[0].array, true)
+  assert_eq(items[0].editable, false)
+  let detail = document.find_table_blocks(["items", "detail"])
+  assert_eq(detail.length(), 1)
+  assert_eq(detail[0].array, false)
+  assert_eq(detail[0].editable, false)
+  assert_eq(detail[0].end_offset, source.length())
+}

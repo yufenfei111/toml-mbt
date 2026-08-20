@@ -166,3 +166,9 @@ test "lexer: word terminates at comma" {
   assert_eq(kind_of(tokens, 4), Comma)
   assert_eq(kind_of(tokens, 5), Word("2"))
 }
+
+///|
+test "lexer: token slices stay aligned after a supplementary scalar" {
+  let tokens = Lexer::tokenize("emoji = \"😀\"\ntitle = \"new\"\n")
+  assert_eq(tokens[4], Token::new(Word("title"), 2, 1))
+}
