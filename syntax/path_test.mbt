@@ -18,6 +18,34 @@ test "parse key paths rejects an empty segment" {
 }
 
 ///|
+test "parse key paths rejects empty double trailing and whitespace-only segments" {
+  assert_true(parse_key_path("") is Err(_))
+  assert_true(parse_key_path("one..two") is Err(_))
+  assert_true(parse_key_path("one.") is Err(_))
+  assert_true(parse_key_path(" \t . \t ") is Err(_))
+}
+
+///|
+test "parse key paths decodes escaped basic key quotes" {
+  let path = parse_key_path("\"a\\\"b\".'literal key'").unwrap()
+  assert_eq(path, ["a\"b", "literal key"])
+}
+
+///|
+test "parse key paths rejects invalid unicode scalars without overflow" {
+  assert_true(parse_key_path("\"\\U00110000\"") is Err(_))
+  assert_true(parse_key_path("\"\\UFFFFFFFF\"") is Err(_))
+  assert_true(parse_key_path("\"\\uD800\"") is Err(_))
+  assert_eq(parse_key_path("\"\\U0010FFFF\"").unwrap(), ["􏿿"])
+}
+
+///|
+test "parse key paths rejects forbidden raw quoted-key controls" {
+  assert_true(parse_key_path("\"bad\u0001\"") is Err(_))
+  assert_true(parse_key_path("'bad\u007F'") is Err(_))
+}
+
+///|
 test "lookup finds value but preserves original spelling" {
   let source = "[package]\n\"display.name\"  =  \"old\" # keep\n"
   let result = scan(source)
@@ -28,6 +56,41 @@ test "lookup finds value but preserves original spelling" {
     source[entry.value_span.start_offset:entry.value_span.end_offset],
     "\"old\"",
   )
+}
+
+///|
+test "array comments cannot alter the value span state" {
+  let source = "items = [\n  # [ ] \" # ignored\n  1,\n] # outer\nnext = 2\n"
+  let document = scan(source).document
+  let items = document.find_entry(["items"]).unwrap()
+  assert_eq(
+    source[items.value_span.start_offset:items.value_span.end_offset],
+    "[\n  # [ ] \" # ignored\n  1,\n]",
+  )
+  assert_true(document.find_entry(["next"]) is Some(_))
+}
+
+///|
+test "malformed header tail clears context until a valid header" {
+  let source = "[old]\na = 1\n[new]junk\nbad = 2\n[good]\nok = 3\n"
+  let document = scan(source).document
+  assert_true(document.find_entry(["old", "a"]) is Some(_))
+  assert_true(document.find_entry(["old", "bad"]) is None)
+  assert_true(document.find_entry(["new", "bad"]) is None)
+  assert_true(document.find_entry(["good", "ok"]) is Some(_))
+}
+
+///|
+test "spans retain CRLF bytes and an EOF value" {
+  let source = "[table]\r\nname = 2"
+  let entry = scan(source).document.find_entry(["table", "name"]).unwrap()
+  assert_eq(entry.value_span.start_offset, 16)
+  assert_eq(entry.value_span.end_offset, 17)
+  assert_eq(entry.line_span.end_offset, 17)
+  match entry.table_span {
+    Some(span) => assert_eq(span.end_offset, 9)
+    None => fail("expected table span")
+  }
 }
 
 ///|

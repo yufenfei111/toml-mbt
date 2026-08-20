@@ -92,7 +92,7 @@ fn read_basic_key(
           if index + 2 + digits > chars.length() {
             return Err(path_error(text, chars, index, "invalid unicode escape"))
           }
-          let mut value = 0
+          let mut value : Int64 = 0L
           for position in (index + 2)..<(index + 2 + digits) {
             let digit = path_hex_value(chars[position])
             if digit < 0 {
@@ -100,14 +100,14 @@ fn read_basic_key(
                 path_error(text, chars, position, "invalid unicode escape"),
               )
             }
-            value = value * 16 + digit
+            value = value * 16L + digit.to_int64()
           }
-          if value > 0x10FFFF || (value >= 0xD800 && value <= 0xDFFF) {
+          if value > 0x10FFFFL || (value >= 0xD800L && value <= 0xDFFFL) {
             return Err(
               path_error(text, chars, index, "invalid unicode scalar value"),
             )
           }
-          out.push(value.unsafe_to_char())
+          out.push(value.to_int().unsafe_to_char())
           index += digits
         }
         _ =>
@@ -118,6 +118,12 @@ fn read_basic_key(
       index += 2
     } else if c == '\n' || c == '\r' {
       return Err(path_error(text, chars, index, "newline in basic key"))
+    } else if is_forbidden_raw_key_control(c) {
+      return Err(
+        path_error(
+          text, chars, index, "unescaped control character in basic key",
+        ),
+      )
     } else {
       out.push(c)
       index += 1
@@ -142,10 +148,23 @@ fn read_literal_key(
     if c == '\n' || c == '\r' {
       return Err(path_error(text, chars, index, "newline in literal key"))
     }
+    if is_forbidden_raw_key_control(c) {
+      return Err(
+        path_error(
+          text, chars, index, "unescaped control character in literal key",
+        ),
+      )
+    }
     out.push(c)
     index += 1
   }
   Err(path_error(text, chars, start, "unterminated literal key"))
+}
+
+///|
+fn is_forbidden_raw_key_control(c : Char) -> Bool {
+  let code = c.to_int()
+  code < 0x09 || (code >= 0x0B && code <= 0x1F) || code == 0x7F
 }
 
 ///|
@@ -270,28 +289,82 @@ fn array_context(
 }
 
 ///|
-fn first_unquoted_equal(chars : Array[Char]) -> Int? {
+priv enum StatementQuote {
+  OutsideStatement
+  BasicStatement(Bool)
+  LiteralStatement(Bool)
+}
+
+///|
+/// Finds a marker outside quoted values and containers. Comments are skipped
+/// through their newline at every nesting depth, so comment contents never
+/// influence quote or delimiter state.
+fn find_top_level_marker(
+  chars : Array[Char],
+  start : Int,
+  marker : Char,
+) -> Int? {
   let mut index = 0
-  let mut quote : Char? = None
+  let mut quote = OutsideStatement
   let mut escaped = false
+  let mut bracket_depth = 0
+  let mut brace_depth = 0
+  let mut comment = false
+  index = start
   while index < chars.length() {
     let c = chars[index]
+    if comment {
+      if c == '\n' || c == '\r' {
+        comment = false
+      }
+      index += 1
+      continue
+    }
     match quote {
-      Some('"') =>
+      BasicStatement(multiline) =>
         if escaped {
           escaped = false
         } else if c == '\\' {
           escaped = true
-        } else if c == '"' {
-          quote = None
+        } else if multiline && has_triple(chars, index, '"') {
+          quote = OutsideStatement
+          index += quote_run(chars, index, '"')
+          continue
+        } else if !multiline && c == '"' {
+          quote = OutsideStatement
         }
-      Some('\'') => if c == '\'' { quote = None }
-      Some(_) => ()
-      None =>
-        if c == '"' || c == '\'' {
-          quote = Some(c)
-        } else if c == '=' {
+      LiteralStatement(multiline) =>
+        if multiline && has_triple(chars, index, '\'') {
+          quote = OutsideStatement
+          index += quote_run(chars, index, '\'')
+          continue
+        } else if !multiline && c == '\'' {
+          quote = OutsideStatement
+        }
+      OutsideStatement =>
+        if c == '#' {
+          if marker == '#' && bracket_depth == 0 && brace_depth == 0 {
+            return Some(index)
+          }
+          comment = true
+        } else if c == marker && bracket_depth == 0 && brace_depth == 0 {
           return Some(index)
+        } else if c == '"' {
+          quote = BasicStatement(has_triple(chars, index, '"'))
+          index += if has_triple(chars, index, '"') { 3 } else { 1 }
+          continue
+        } else if c == '\'' {
+          quote = LiteralStatement(has_triple(chars, index, '\''))
+          index += if has_triple(chars, index, '\'') { 3 } else { 1 }
+          continue
+        } else if c == '[' {
+          bracket_depth += 1
+        } else if c == ']' && bracket_depth > 0 {
+          bracket_depth -= 1
+        } else if c == '{' {
+          brace_depth += 1
+        } else if c == '}' && brace_depth > 0 {
+          brace_depth -= 1
         }
     }
     index += 1
@@ -314,13 +387,6 @@ fn trim_statement_end(chars : Array[Char], end : Int) -> Int {
 }
 
 ///|
-priv enum ValueQuote {
-  OutsideValue
-  BasicValue(Bool)
-  LiteralValue(Bool)
-}
-
-///|
 fn has_triple(chars : Array[Char], index : Int, quote : Char) -> Bool {
   index + 2 < chars.length() &&
   chars[index] == quote &&
@@ -339,58 +405,10 @@ fn quote_run(chars : Array[Char], index : Int, quote : Char) -> Int {
 
 ///|
 fn value_end(chars : Array[Char], start : Int) -> Int {
-  let mut index = start
-  let mut quote = OutsideValue
-  let mut escaped = false
-  let mut bracket_depth = 0
-  let mut brace_depth = 0
-  while index < chars.length() {
-    let c = chars[index]
-    match quote {
-      BasicValue(multiline) =>
-        if escaped {
-          escaped = false
-        } else if c == '\\' {
-          escaped = true
-        } else if multiline && has_triple(chars, index, '"') {
-          quote = OutsideValue
-          index += quote_run(chars, index, '"')
-          continue
-        } else if !multiline && c == '"' {
-          quote = OutsideValue
-        }
-      LiteralValue(multiline) =>
-        if multiline && has_triple(chars, index, '\'') {
-          quote = OutsideValue
-          index += quote_run(chars, index, '\'')
-          continue
-        } else if !multiline && c == '\'' {
-          quote = OutsideValue
-        }
-      OutsideValue =>
-        if c == '"' {
-          quote = BasicValue(has_triple(chars, index, '"'))
-          index += if has_triple(chars, index, '"') { 3 } else { 1 }
-          continue
-        } else if c == '\'' {
-          quote = LiteralValue(has_triple(chars, index, '\''))
-          index += if has_triple(chars, index, '\'') { 3 } else { 1 }
-          continue
-        } else if c == '[' {
-          bracket_depth += 1
-        } else if c == ']' && bracket_depth > 0 {
-          bracket_depth -= 1
-        } else if c == '{' {
-          brace_depth += 1
-        } else if c == '}' && brace_depth > 0 {
-          brace_depth -= 1
-        } else if c == '#' && bracket_depth == 0 && brace_depth == 0 {
-          return trim_statement_end(chars, index)
-        }
-    }
-    index += 1
+  match find_top_level_marker(chars, start, '#') {
+    Some(index) => trim_statement_end(chars, index)
+    None => trim_statement_end(chars, chars.length())
   }
-  trim_statement_end(chars, chars.length())
 }
 
 ///|
@@ -406,43 +424,49 @@ fn header_path(
     index += 1
   }
   let open = if array { 2 } else { 1 }
-  if index + open > chars.length() {
+  if index + open > chars.length() || chars[index] != '[' {
+    return None
+  }
+  if array && chars[index + 1] != '[' {
+    return None
+  }
+  if !array && index + 1 < chars.length() && chars[index + 1] == '[' {
     return None
   }
   index += open
   let start = index
-  let mut quote : Char? = None
-  let mut escaped = false
-  while index < chars.length() {
-    let c = chars[index]
-    match quote {
-      Some('"') =>
-        if escaped {
-          escaped = false
-        } else if c == '\\' {
-          escaped = true
-        } else if c == '"' {
-          quote = None
+  match find_top_level_marker(chars, start, ']') {
+    None => None
+    Some(close) => {
+      let end = if array {
+        if close + 1 >= chars.length() || chars[close + 1] != ']' {
+          return None
         }
-      Some('\'') => if c == '\'' { quote = None }
-      Some(_) => ()
-      None =>
-        if c == '"' || c == '\'' {
-          quote = Some(c)
-        } else if c == ']' {
-          let close_matches = !array ||
-            (index + 1 < chars.length() && chars[index + 1] == ']')
-          if close_matches {
-            match parse_key_path(String::from_iter(chars[start:index].iter())) {
-              Ok(path) => return Some(path)
-              Err(_) => return None
-            }
-          }
-        }
+        close + 2
+      } else {
+        close + 1
+      }
+      if !valid_header_tail(chars, end) {
+        return None
+      }
+      match parse_key_path(String::from_iter(chars[start:close].iter())) {
+        Ok(path) => Some(path)
+        Err(_) => None
+      }
     }
+  }
+}
+
+///|
+fn valid_header_tail(chars : Array[Char], start : Int) -> Bool {
+  let mut index = start
+  while index < chars.length() && is_path_space(chars[index]) {
     index += 1
   }
-  None
+  if index == chars.length() || chars[index] == '#' {
+    return true
+  }
+  chars[index] == '\r' || chars[index] == '\n'
 }
 
 ///|
@@ -456,7 +480,7 @@ fn index_key_value(
 ) -> Unit {
   let text = statement.text(source)
   let chars = text.to_array()
-  match first_unquoted_equal(chars) {
+  match find_top_level_marker(chars, 0, '=') {
     None => ()
     Some(equal) => {
       let mut key_start = 0
@@ -521,20 +545,29 @@ fn index_entries(
   let mut table_path : Array[String] = []
   let mut table_span : SourceSpan? = None
   let mut editable = true
+  let mut context_known = true
   for statement in statements {
     match statement.kind {
       KeyValue =>
-        index_key_value(
-          source, statement, table_path, table_span, editable, entries,
-        )
+        if context_known {
+          index_key_value(
+            source, statement, table_path, table_span, editable, entries,
+          )
+        }
       TableHeader =>
         match header_path(statement, source, false) {
           Some(path) => {
             editable = !array_context(path, array_tables)
             table_path = path
             table_span = Some(statement.span)
+            context_known = true
           }
-          None => ()
+          None => {
+            table_path = []
+            table_span = None
+            editable = false
+            context_known = false
+          }
         }
       ArrayTableHeader =>
         match header_path(statement, source, true) {
@@ -543,8 +576,14 @@ fn index_entries(
             table_path = path
             table_span = Some(statement.span)
             editable = false
+            context_known = true
           }
-          None => ()
+          None => {
+            table_path = []
+            table_span = None
+            editable = false
+            context_known = false
+          }
         }
       Trivia | Invalid => ()
     }
