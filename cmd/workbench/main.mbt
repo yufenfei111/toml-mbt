@@ -9,9 +9,6 @@ pub struct CliResult {
 extern "C" fn exit_with_code(code : Int) = "exit"
 
 ///|
-extern "C" fn process_id() -> UInt = "moonbitlang_async_getpid"
-
-///|
 fn command_file(command : @wb.Command) -> String {
   match command {
     Check(file~, ..) | Get(file~, ..) | Set(file~, ..) | Remove(file~, ..) =>
@@ -53,23 +50,48 @@ fn path_parts(path : String) -> (String, String, String) {
 }
 
 ///|
-fn generated_temp_path(target : String) -> String {
+fn temp_path_for_nonce(target : String, nonce : String) -> String {
   let (parent, basename, separator) = path_parts(target)
-  parent +
-  separator +
-  "." +
-  basename +
-  ".toml-workbench-" +
-  process_id().to_string() +
-  "-" +
-  @env.now().to_string() +
-  ".tmp"
+  parent + separator + "." + basename + ".toml-workbench-" + nonce + ".tmp"
 }
 
 ///|
-async fn cleanup_created_temp(path : String) -> Unit {
-  @fs.remove(path) catch {
-    _ => ()
+fn random_temp_candidates(target : String) -> Result[Array[String], String] {
+  let candidates : Array[String] = []
+  for attempt = 0; attempt < 8; attempt = attempt + 1 {
+    guard @env.rand(16) is Some(bytes) else {
+      return Err("operating system random source is unavailable")
+    }
+    let nonce = StringBuilder(size_hint=32)
+    for byte in bytes {
+      nonce.write_string(byte.to_hex())
+    }
+    candidates.push(
+      temp_path_for_nonce(target, nonce.to_string() + "-" + attempt.to_string()),
+    )
+  }
+  Ok(candidates)
+}
+
+///|
+/// Best-effort cleanup for a temporary file created by this process. Cleanup
+/// is cancellation-protected. If removal fails, the exact residual path and
+/// cleanup error are added to the original failure.
+pub async fn cleanup_after_failure(path : String, failure : String) -> String {
+  let cleanup_error : String? = try {
+    @async.protect_from_cancel(() => @fs.remove(path), resume_on_cancel=true)
+    None
+  } catch {
+    error => Some(error.to_string())
+  }
+  match cleanup_error {
+    None => failure
+    Some(error) =>
+      failure +
+      "; cleanup failed; temporary file retained at \"" +
+      path +
+      "\": " +
+      error
   }
 }
 
@@ -83,64 +105,114 @@ async fn resolved_parents_match(target : String, temporary : String) -> Bool {
 ///|
 /// Replaces `target` only after a same-directory temporary file contains the
 /// exact candidate bytes and the candidate parses as TOML. `temp_path` is an
-/// explicit test seam; normal callers receive a process/time-derived name.
+/// explicit test seam; normal callers receive bounded random candidates.
 pub async fn atomic_replace(
   target : String,
   candidate : String,
   temp_path? : String,
 ) -> Result[Unit, String] {
-  let temporary = temp_path.unwrap_or_else(() => generated_temp_path(target))
-  let mut created = false
-  let outcome : Result[Unit, String] = try {
-    if !resolved_parents_match(target, temporary) {
-      Err("temporary file must be in the target directory")
-    } else {
-      let temporary_file = @fs.open(
-        temporary,
-        mode=WriteOnly,
-        create_mode=CreateNew,
-        sync=Full,
-      )
-      created = true
-      let write_error : String? = try {
-        temporary_file.write(candidate)
-        temporary_file.sync()
-        None
-      } catch {
-        error => Some(error.to_string())
+  let candidates = match temp_path {
+    Some(path) => [path]
+    None =>
+      match random_temp_candidates(target) {
+        Ok(candidates) => candidates
+        Err(error) => return Err(error)
       }
-      temporary_file.close()
-      match write_error {
-        Some(message) => Err(message)
-        None => {
-          let readback_data = @fs.read_file(temporary)
-          let exact_bytes = readback_data.binary() == @utf8.encode(candidate)
-          let readback = readback_data.text()
-          if !exact_bytes || readback != candidate {
-            Err("temporary file readback did not match the candidate bytes")
+  }
+  atomic_replace_with_candidates(target, candidate, candidates)
+}
+
+///|
+priv enum TempOpen {
+  Opened(String, @fs.File)
+  Collision
+  Failed(String)
+}
+
+///|
+async fn try_open_temp(path : String) -> TempOpen {
+  Opened(
+    path,
+    @fs.open(
+      path,
+      mode=WriteOnly,
+      create_mode=CreateNew,
+      permission=0o600,
+      sync=Full,
+    ),
+  ) catch {
+    @os_error.OSError(_) as error if error.is_EEXIST() => Collision
+    error => Failed(error.to_string())
+  }
+}
+
+///|
+/// Atomic replacement with explicit ordered candidates. An existing candidate
+/// is never overwritten or removed; creation continues with the next path.
+pub async fn atomic_replace_with_candidates(
+  target : String,
+  candidate : String,
+  candidates : Array[String],
+) -> Result[Unit, String] {
+  let attempt_count = candidates.length()
+  let mut opened : (String, @fs.File)? = None
+  for temporary in candidates {
+    if !resolved_parents_match(target, temporary) {
+      return Err("temporary file must be in the target directory")
+    }
+    match try_open_temp(temporary) {
+      Collision => continue
+      Failed(error) => return Err(error)
+      Opened(path, file) => {
+        opened = Some((path, file))
+        break
+      }
+    }
+  }
+  guard opened is Some((temporary, temporary_file)) else {
+    return Err(
+      "unable to create a unique temporary file after " +
+      attempt_count.to_string() +
+      " attempts",
+    )
+  }
+  let write_error : String? = try {
+    temporary_file.write(candidate)
+    temporary_file.sync()
+    None
+  } catch {
+    error => Some(error.to_string())
+  }
+  temporary_file.close()
+  if write_error is Some(error) {
+    return Err(cleanup_after_failure(temporary, error))
+  }
+  let outcome : Result[Unit, String] = try {
+    let readback_data = @fs.read_file(temporary)
+    let exact_bytes = readback_data.binary() == @utf8.encode(candidate)
+    let readback = readback_data.text()
+    if !exact_bytes || readback != candidate {
+      Err("temporary file readback did not match the candidate bytes")
+    } else {
+      match @toml-mbt.parse(readback) {
+        Err(error) =>
+          Err("temporary file is not valid TOML: " + error.to_string())
+        Ok(_) =>
+          if !resolved_parents_match(target, temporary) {
+            Err("temporary file parent changed before replacement")
           } else {
-            match @toml-mbt.parse(readback) {
-              Err(error) =>
-                Err("temporary file is not valid TOML: " + error.to_string())
-              Ok(_) =>
-                if !resolved_parents_match(target, temporary) {
-                  Err("temporary file parent changed before replacement")
-                } else {
-                  @fs.rename(temporary, target, replace=true)
-                  Ok(())
-                }
-            }
+            @fs.rename(temporary, target, replace=true)
+            Ok(())
           }
-        }
       }
     }
   } catch {
     error => Err(error.to_string())
   }
-  if created && outcome is Err(_) {
-    cleanup_created_temp(temporary)
+  match outcome {
+    Ok(_) => Ok(())
+    Err(error) => Err(cleanup_after_failure(temporary, error))
   }
-  outcome
 }
 
 ///|
@@ -172,7 +244,7 @@ pub async fn execute(args : Array[String], temp_path? : String) -> CliResult {
     Ok(command) => {
       let target = command_file(command)
       let source = @fs.read_file(target).text() catch {
-        error => return io_error("cannot read source: " + error.to_string())
+        _ => return io_error("cannot read source: \"" + target + "\"")
       }
       let result = @wb.run(command, source)
       if command_writes(command) && result.exit_code == 0 {
