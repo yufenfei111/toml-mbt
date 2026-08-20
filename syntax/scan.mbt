@@ -46,11 +46,36 @@ fn is_horizontal_space(c : Char) -> Bool {
 }
 
 ///|
+fn remember_non_trivia(
+  first : Char?,
+  second : Char?,
+  c : Char,
+) -> (Char?, Char?) {
+  match first {
+    None => (Some(c), second)
+    Some(_) =>
+      match second {
+        None => (first, Some(c))
+        Some(_) => (first, second)
+      }
+  }
+}
+
+///|
 fn is_triple(chars : Array[Char], index : Int, quote : Char) -> Bool {
   index + 2 < chars.length() &&
   chars[index] == quote &&
   chars[index + 1] == quote &&
   chars[index + 2] == quote
+}
+
+///|
+fn quote_run_length(chars : Array[Char], index : Int, quote : Char) -> Int {
+  let mut length = 0
+  while index + length < chars.length() && chars[index + length] == quote {
+    length += 1
+  }
+  length
 }
 
 ///|
@@ -61,25 +86,38 @@ fn classify_statement(source : String, span : SourceSpan) -> StatementKind {
   let mut second : Char? = None
   let mut has_equal = false
   let mut comment = false
+  let mut quote = Outside
+  let mut escaped = false
   for c in chars {
-    if comment {
-      ()
-    } else if c == '#' {
-      comment = true
-    } else if is_horizontal_space(c) || c == '\r' || c == '\n' {
-      ()
-    } else {
-      match first {
-        None => first = Some(c)
-        Some(_) =>
-          match second {
-            None => second = Some(c)
-            Some(_) => ()
+    match quote {
+      Outside =>
+        if comment {
+          ()
+        } else if c == '#' {
+          comment = true
+        } else if is_horizontal_space(c) || c == '\r' || c == '\n' {
+          ()
+        } else {
+          let (next_first, next_second) = remember_non_trivia(first, second, c)
+          first = next_first
+          second = next_second
+          if c == '=' {
+            has_equal = true
+          } else if c == '"' {
+            quote = Basic(false)
+          } else if c == '\'' {
+            quote = Literal(false)
           }
-      }
-      if c == '=' {
-        has_equal = true
-      }
+        }
+      Basic(_) =>
+        if escaped {
+          escaped = false
+        } else if c == '\\' {
+          escaped = true
+        } else if c == '"' {
+          quote = Outside
+        }
+      Literal(_) => if c == '\'' { quote = Outside }
     }
   }
   match first {
@@ -133,7 +171,9 @@ pub fn scan(source : String) -> ScanResult {
   let mut escaped = false
   let mut bracket_depth = 0
   let mut brace_depth = 0
+  let container_stack : Array[Char] = []
   let mut comment = false
+  let mut statement_invalid = false
   while index < chars.length() {
     let c = chars[index]
     if c == '\r' || c == '\n' {
@@ -143,6 +183,15 @@ pub fn scan(source : String) -> ScanResult {
         2
       } else {
         1
+      }
+      if quote == Basic(false) || quote == Literal(false) {
+        statement_invalid = true
+        errors.push({
+          message: "newline in single-line string",
+          span: make_span(offset, offset + width, line, column),
+        })
+      } else if quote == Basic(true) && escaped {
+        escaped = false
       }
       let ends_statement = quote == Outside &&
         bracket_depth == 0 &&
@@ -156,13 +205,14 @@ pub fn scan(source : String) -> ScanResult {
         let span = make_span(
           statement_offset, offset, statement_line, statement_column,
         )
-        let kind = add_statement(statements, source, span, false)
-        if kind == Invalid {
+        let kind = add_statement(statements, source, span, statement_invalid)
+        if kind == Invalid && !statement_invalid {
           errors.push({ message: "invalid statement", span })
         }
         statement_offset = offset
         statement_line = line
         statement_column = column
+        statement_invalid = false
       }
       continue
     }
@@ -203,12 +253,36 @@ pub fn scan(source : String) -> ScanResult {
             comment = true
           } else if c == '[' {
             bracket_depth += 1
-          } else if c == ']' && bracket_depth > 0 {
-            bracket_depth -= 1
+            container_stack.push(c)
+          } else if c == ']' {
+            let matches = container_stack.length() > 0 &&
+              container_stack[container_stack.length() - 1] == '['
+            if matches {
+              container_stack.truncate(container_stack.length() - 1)
+              bracket_depth -= 1
+            } else {
+              statement_invalid = true
+              errors.push({
+                message: "unmatched closing delimiter",
+                span: make_span(offset, offset + utf8_width(c), line, column),
+              })
+            }
           } else if c == '{' {
             brace_depth += 1
-          } else if c == '}' && brace_depth > 0 {
-            brace_depth -= 1
+            container_stack.push(c)
+          } else if c == '}' {
+            let matches = container_stack.length() > 0 &&
+              container_stack[container_stack.length() - 1] == '{'
+            if matches {
+              container_stack.truncate(container_stack.length() - 1)
+              brace_depth -= 1
+            } else {
+              statement_invalid = true
+              errors.push({
+                message: "unmatched closing delimiter",
+                span: make_span(offset, offset + utf8_width(c), line, column),
+              })
+            }
           }
           offset += utf8_width(c)
           index += 1
@@ -226,10 +300,11 @@ pub fn scan(source : String) -> ScanResult {
           index += 1
           column += 1
         } else if multiline && is_triple(chars, index, '"') {
+          let length = quote_run_length(chars, index, '"')
           quote = Outside
-          offset += 3
-          index += 3
-          column += 3
+          offset += length
+          index += length
+          column += length
         } else if !multiline && c == '"' {
           quote = Outside
           offset += 1
@@ -242,10 +317,11 @@ pub fn scan(source : String) -> ScanResult {
         }
       Literal(multiline) =>
         if multiline && is_triple(chars, index, '\'') {
+          let length = quote_run_length(chars, index, '\'')
           quote = Outside
-          offset += 3
-          index += 3
-          column += 3
+          offset += length
+          index += length
+          column += length
         } else if !multiline && c == '\'' {
           quote = Outside
           offset += 1
@@ -262,9 +338,10 @@ pub fn scan(source : String) -> ScanResult {
     let span = make_span(
       statement_offset, offset, statement_line, statement_column,
     )
-    let invalid = quote != Outside || bracket_depth > 0 || brace_depth > 0
+    let unterminated = quote != Outside || bracket_depth > 0 || brace_depth > 0
+    let invalid = statement_invalid || unterminated
     let kind = add_statement(statements, source, span, invalid)
-    if invalid {
+    if unterminated {
       let message = match quote {
         Outside =>
           if bracket_depth > 0 {
@@ -276,7 +353,7 @@ pub fn scan(source : String) -> ScanResult {
         Literal(_) => "unterminated string"
       }
       errors.push({ message, span })
-    } else if kind == Invalid {
+    } else if kind == Invalid && !statement_invalid {
       errors.push({ message: "invalid statement", span })
     }
   }
