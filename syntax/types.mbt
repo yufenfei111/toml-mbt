@@ -34,10 +34,22 @@ pub struct Statement {
 } derive(Eq, Debug)
 
 ///|
+/// A key/value statement indexed by its decoded TOML key path.
+pub struct KeyValueEntry {
+  path : Array[String]
+  key_span : SourceSpan
+  value_span : SourceSpan
+  line_span : SourceSpan
+  table_span : SourceSpan?
+  editable : Bool
+} derive(Debug)
+
+///|
 /// The scanner's lossless view of one source document.
 pub struct Document {
   source : String
   statements : Array[Statement]
+  entries : Array[KeyValueEntry]
 }
 
 ///|

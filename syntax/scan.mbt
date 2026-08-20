@@ -373,5 +373,6 @@ pub fn scan(source : String) -> ScanResult {
       errors.push({ message: "invalid statement", span })
     }
   }
-  { document: { source, statements }, errors }
+  let entries = index_entries(source, statements)
+  { document: { source, statements, entries }, errors }
 }

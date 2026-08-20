@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn parse_key_path(String) -> Result[Array[String], SyntaxError]
+
 pub fn scan(String) -> ScanResult
 
 // Errors
@@ -14,7 +16,19 @@ pub fn scan(String) -> ScanResult
 pub struct Document {
   source : String
   statements : Array[Statement]
+  entries : Array[KeyValueEntry]
 }
+pub fn Document::find_entries(Self, Array[String]) -> Array[KeyValueEntry]
+pub fn Document::find_entry(Self, Array[String]) -> KeyValueEntry?
+
+pub struct KeyValueEntry {
+  path : Array[String]
+  key_span : SourceSpan
+  value_span : SourceSpan
+  line_span : SourceSpan
+  table_span : SourceSpan?
+  editable : Bool
+} derive(@debug.Debug)
 
 pub struct ScanResult {
   document : Document
