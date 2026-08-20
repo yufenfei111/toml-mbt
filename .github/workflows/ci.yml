@@ -34,10 +34,15 @@ jobs:
       - name: Build native toml-test decoder
         run: moon build --release --target native cmd/toml-test-decoder
 
-      - name: Run official toml-test v2.2.0 decoder suite
-        run: >-
-          go run github.com/toml-lang/toml-test/v2/cmd/toml-test@v2.2.0
-          test -decoder ./scripts/toml-test-decoder.sh
-
       - name: Format check
         run: moon fmt --check
+
+      - name: Enforce official toml-test v2.2.0 baseline (177 valid / 421 invalid)
+        shell: pwsh
+        run: |
+          $outputPath = Join-Path $env:RUNNER_TEMP 'toml-test-v2.2.0-output.txt'
+          $outputLines = & env TOML_TEST_DECODER_NO_BUILD=1 go run github.com/toml-lang/toml-test/v2/cmd/toml-test@v2.2.0 test -decoder ./scripts/toml-test-decoder.sh 2>&1
+          $status = $LASTEXITCODE
+          $outputLines | Write-Output
+          Set-Content -LiteralPath $outputPath -Value ($outputLines -join [Environment]::NewLine) -NoNewline
+          & ./scripts/check-toml-test-baseline.ps1 -InputPath $outputPath -SummaryPath $env:GITHUB_STEP_SUMMARY -Status $status
