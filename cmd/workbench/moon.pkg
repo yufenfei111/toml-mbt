@@ -1,0 +1,14 @@
+import {
+  "yufenfei111/toml-mbt",
+  "yufenfei111/toml-mbt/workbench" @wb,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/io",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "-all+native"
+
+pkgtype(kind: "executable")
