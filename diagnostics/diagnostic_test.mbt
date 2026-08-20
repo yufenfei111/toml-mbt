@@ -216,3 +216,23 @@ test "JSON rendering uses null when no suggestion is supplied" {
     _ => fail("expected diagnostic array")
   }
 }
+
+///|
+test "text rendering escapes Unicode separators and bidi formatting fields" {
+  let source_span = @syntax.scan("x = ]").errors[0].span
+  let item : Diagnostic = {
+    severity: Severity::Error,
+    code: "WB\u202A100\u202E",
+    message: "bad\u061C\u200E\u200F\u2028\u2029\u2066message\u2069",
+    span: source_span,
+    suggestion: None,
+  }
+  let output = render_text("bad\u2028\u2029file.toml", "x = ]", item)
+  assert_true(output.contains("bad\\u{2028}\\u{2029}file.toml"))
+  assert_true(output.contains("WB\\u{202a}100\\u{202e}"))
+  assert_true(
+    output.contains(
+      "bad\\u{61c}\\u{200e}\\u{200f}\\u{2028}\\u{2029}\\u{2066}message\\u{2069}",
+    ),
+  )
+}

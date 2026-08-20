@@ -100,6 +100,20 @@ priv enum LookupError {
 }
 
 ///|
+fn contains_only_tables(values : Array[@toml-mbt.Value]) -> Bool {
+  if values.length() == 0 {
+    return false
+  }
+  for value in values {
+    match value {
+      @toml-mbt.Table(_) => ()
+      _ => return false
+    }
+  }
+  true
+}
+
+///|
 fn lookup_nested(
   value : @toml-mbt.Value,
   path : Array[String],
@@ -115,8 +129,8 @@ fn lookup_nested(
         None => Err(Missing)
       }
     @toml-mbt.Array(values) =>
-      if values.length() == 0 {
-        Err(Missing)
+      if !contains_only_tables(values) {
+        Err(NonTable)
       } else if values.length() == 1 {
         lookup_nested(values[0], path, index)
       } else {
@@ -151,25 +165,26 @@ fn render_path(path : Array[String]) -> String {
 
 ///|
 fn run_get(file : String, path : Array[String], source : String) -> RunResult {
-  if path.length() == 0 {
-    return failure(
-      "error[WB202]: invalid key path: key path must contain at least one segment",
-    )
-  }
   match source_validation(source) {
     Invalid(diagnostics) => diagnostic_failure(file, source, diagnostics, false)
     Valid(table) =>
-      match lookup_value(table, path) {
-        Err(Missing) =>
-          failure("error[WB200]: key not found: " + render_path(path))
-        Err(Ambiguous) =>
-          failure("error[WB201]: ambiguous key path: " + render_path(path))
-        Err(NonTable) =>
-          failure(
-            "error[WB202]: key path crosses a non-table value: " +
-            render_path(path),
-          )
-        Ok(value) => success(@toml-mbt.encode_tagged_value(value), None)
+      if path.length() == 0 {
+        failure(
+          "error[WB202]: invalid key path: key path must contain at least one segment",
+        )
+      } else {
+        match lookup_value(table, path) {
+          Err(Missing) =>
+            failure("error[WB200]: key not found: " + render_path(path))
+          Err(Ambiguous) =>
+            failure("error[WB201]: ambiguous key path: " + render_path(path))
+          Err(NonTable) =>
+            failure(
+              "error[WB202]: key path crosses a non-table value: " +
+              render_path(path),
+            )
+          Ok(value) => success(@toml-mbt.encode_tagged_value(value), None)
+        }
       }
   }
 }

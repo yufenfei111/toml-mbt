@@ -105,7 +105,7 @@ fn sanitize_text_field(value : String) -> String {
       '\t' => output.write_string("\\t")
       _ => {
         let code = character.to_int()
-        if code < 0x20 || (code >= 0x7F && code <= 0x9F) {
+        if unsafe_text_control(code) {
           output.write_string("\\u{")
           output.write_string(code.to_string(radix=16))
           output.write_char('}')
@@ -116,6 +116,19 @@ fn sanitize_text_field(value : String) -> String {
     }
   }
   output.to_string()
+}
+
+///|
+fn unsafe_text_control(code : Int) -> Bool {
+  code < 0x20 ||
+  (code >= 0x7F && code <= 0x9F) ||
+  code == 0x061C ||
+  code == 0x200E ||
+  code == 0x200F ||
+  code == 0x2028 ||
+  code == 0x2029 ||
+  (code >= 0x202A && code <= 0x202E) ||
+  (code >= 0x2066 && code <= 0x2069)
 }
 
 ///|

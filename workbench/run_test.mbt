@@ -223,3 +223,36 @@ test "edit ambiguity and invalid source failures have stable mappings" {
   assert_eq(ambiguous.proposed_source, None)
   assert_eq(invalid_source.proposed_source, None)
 }
+
+///|
+test "get validates malformed source before rejecting an empty direct path" {
+  let result = run(Get(file="bad.toml", path=[]), "value = ]")
+  assert_eq(result.stdout, "")
+  assert_eq(result.exit_code, 1)
+  assert_true(result.stderr.contains("error[TOML100]"))
+  assert_true(result.stderr.contains("error[WB100]"))
+  assert_true(!result.stderr.contains("error[WB202]"))
+}
+
+///|
+test "get rejects traversal through non-table arrays as WB202" {
+  for source in ["items = [1, 2]\n", "items = []\n"] {
+    let result = run(Get(file="config.toml", path=["items", "name"]), source)
+    assert_eq(result.stdout, "")
+    assert_eq(
+      result.stderr,
+      "error[WB202]: key path crosses a non-table value: [\"items\",\"name\"]",
+    )
+    assert_eq(result.exit_code, 1)
+  }
+}
+
+///|
+test "flag-shaped encoded values reach edit validation" {
+  let command = parse_args(["set", "f", "key", "--unknown"]).unwrap()
+  let result = run(command, "key = 1\n")
+  assert_eq(result.stdout, "")
+  assert_true(result.stderr.has_prefix("error[WB203]: invalid TOML value:"))
+  assert_eq(result.exit_code, 1)
+  assert_eq(result.proposed_source, None)
+}

@@ -60,7 +60,7 @@ fn sanitize_argument(value : String) -> String {
       '\t' => output.write_string("\\t")
       _ => {
         let code = character.to_int()
-        if code < 0x20 || (code >= 0x7F && code <= 0x9F) {
+        if unsafe_human_control(code) {
           output.write_string("\\u{")
           output.write_string(code.to_string(radix=16))
           output.write_char('}')
@@ -74,28 +74,16 @@ fn sanitize_argument(value : String) -> String {
 }
 
 ///|
-fn duplicate_flag(args : Array[String]) -> String? {
-  let mut json_count = 0
-  let mut write_count = 0
-  for argument in args {
-    if argument == "--json" {
-      json_count += 1
-    } else if argument == "--write" {
-      write_count += 1
-    }
-  }
-  if json_count > 1 {
-    Some("--json")
-  } else if write_count > 1 {
-    Some("--write")
-  } else {
-    None
-  }
-}
-
-///|
-fn flag_shaped(argument : String) -> Bool {
-  argument.has_prefix("--")
+fn unsafe_human_control(code : Int) -> Bool {
+  code < 0x20 ||
+  (code >= 0x7F && code <= 0x9F) ||
+  code == 0x061C ||
+  code == 0x200E ||
+  code == 0x200F ||
+  code == 0x2028 ||
+  code == 0x2029 ||
+  (code >= 0x202A && code <= 0x202E) ||
+  (code >= 0x2066 && code <= 0x2069)
 }
 
 ///|
@@ -111,9 +99,6 @@ fn parse_check(args : Array[String]) -> Result[Command, CommandError] {
   if args.length() < 2 {
     return Err(MissingArgument("file"))
   }
-  if flag_shaped(args[1]) {
-    return Err(UnexpectedArgument(args[1]))
-  }
   if args.length() == 2 {
     return Ok(Check(file=args[1], json=false))
   }
@@ -121,7 +106,11 @@ fn parse_check(args : Array[String]) -> Result[Command, CommandError] {
     return Err(UnexpectedArgument(args[2]))
   }
   if args.length() > 3 {
-    return Err(UnexpectedArgument(args[3]))
+    return if args[3] == "--json" {
+      Err(DuplicateFlag("--json"))
+    } else {
+      Err(UnexpectedArgument(args[3]))
+    }
   }
   Ok(Check(file=args[1], json=true))
 }
@@ -131,14 +120,8 @@ fn parse_get(args : Array[String]) -> Result[Command, CommandError] {
   if args.length() < 2 {
     return Err(MissingArgument("file"))
   }
-  if flag_shaped(args[1]) {
-    return Err(UnexpectedArgument(args[1]))
-  }
   if args.length() < 3 {
     return Err(MissingArgument("path"))
-  }
-  if flag_shaped(args[2]) {
-    return Err(UnexpectedArgument(args[2]))
   }
   if args.length() > 3 {
     return Err(UnexpectedArgument(args[3]))
@@ -154,20 +137,11 @@ fn parse_set(args : Array[String]) -> Result[Command, CommandError] {
   if args.length() < 2 {
     return Err(MissingArgument("file"))
   }
-  if flag_shaped(args[1]) {
-    return Err(UnexpectedArgument(args[1]))
-  }
   if args.length() < 3 {
     return Err(MissingArgument("path"))
   }
-  if flag_shaped(args[2]) {
-    return Err(UnexpectedArgument(args[2]))
-  }
   if args.length() < 4 {
     return Err(MissingArgument("toml-value"))
-  }
-  if flag_shaped(args[3]) {
-    return Err(UnexpectedArgument(args[3]))
   }
   let write = if args.length() == 4 {
     false
@@ -176,7 +150,11 @@ fn parse_set(args : Array[String]) -> Result[Command, CommandError] {
       return Err(UnexpectedArgument(args[4]))
     }
     if args.length() > 5 {
-      return Err(UnexpectedArgument(args[5]))
+      return if args[5] == "--write" {
+        Err(DuplicateFlag("--write"))
+      } else {
+        Err(UnexpectedArgument(args[5]))
+      }
     }
     true
   }
@@ -191,14 +169,8 @@ fn parse_remove(args : Array[String]) -> Result[Command, CommandError] {
   if args.length() < 2 {
     return Err(MissingArgument("file"))
   }
-  if flag_shaped(args[1]) {
-    return Err(UnexpectedArgument(args[1]))
-  }
   if args.length() < 3 {
     return Err(MissingArgument("path"))
-  }
-  if flag_shaped(args[2]) {
-    return Err(UnexpectedArgument(args[2]))
   }
   let write = if args.length() == 3 {
     false
@@ -207,7 +179,11 @@ fn parse_remove(args : Array[String]) -> Result[Command, CommandError] {
       return Err(UnexpectedArgument(args[3]))
     }
     if args.length() > 4 {
-      return Err(UnexpectedArgument(args[4]))
+      return if args[4] == "--write" {
+        Err(DuplicateFlag("--write"))
+      } else {
+        Err(UnexpectedArgument(args[4]))
+      }
     }
     true
   }
@@ -219,8 +195,8 @@ fn parse_remove(args : Array[String]) -> Result[Command, CommandError] {
 
 ///|
 /// Parses argv without an executable name. Optional flags are recognized only
-/// in their documented final positions; duplicate supported flags take error
-/// precedence over positional validation.
+/// in their documented final positions; positional values are never counted
+/// as flags when detecting a repeated optional flag.
 pub fn parse_args(args : Array[String]) -> Result[Command, CommandError] {
   if args.length() == 0 {
     return Err(MissingArgument("command"))
@@ -228,10 +204,6 @@ pub fn parse_args(args : Array[String]) -> Result[Command, CommandError] {
   match args[0] {
     "check" | "get" | "set" | "remove" => ()
     command => return Err(UnknownCommand(command))
-  }
-  match duplicate_flag(args) {
-    Some(flag) => return Err(DuplicateFlag(flag))
-    None => ()
   }
   match args[0] {
     "check" => parse_check(args)

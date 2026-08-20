@@ -93,39 +93,51 @@ test "reject duplicate supported flags before other argument errors" {
     Err(DuplicateFlag("--write")),
   )
   assert_eq(
-    parse_args(["remove", "config.toml", "--write", "name", "--write"]),
+    parse_args(["remove", "config.toml", "name", "--write", "--write"]),
     Err(DuplicateFlag("--write")),
   )
 }
 
 ///|
-test "reject known flags outside their documented final positions" {
+test "interpret flag-shaped values by positional slot" {
   assert_eq(
     parse_args(["check", "--json", "config.toml"]),
-    Err(UnexpectedArgument("--json")),
+    Err(UnexpectedArgument("config.toml")),
   )
   assert_eq(
     parse_args(["set", "config.toml", "--write", "1"]),
-    Err(UnexpectedArgument("--write")),
+    Ok(Set(file="config.toml", path=["--write"], encoded="1", write=false)),
   )
   assert_eq(
     parse_args(["remove", "--write", "name"]),
-    Err(UnexpectedArgument("--write")),
+    Ok(Remove(file="--write", path=["name"], write=false)),
   )
 }
 
 ///|
-test "reject invalid paths and flag-shaped positional arguments" {
+test "reject invalid paths but retain flag-shaped positional arguments" {
   assert_true(
     parse_args(["get", "config.toml", "one..two"]) is Err(InvalidPath(_)),
   )
   assert_eq(
     parse_args(["get", "--unknown", "name"]),
-    Err(UnexpectedArgument("--unknown")),
+    Ok(Get(file="--unknown", path=["name"])),
   )
   assert_eq(
     parse_args(["set", "config.toml", "name", "--unknown"]),
-    Err(UnexpectedArgument("--unknown")),
+    Ok(Set(file="config.toml", path=["name"], encoded="--unknown", write=false)),
+  )
+}
+
+///|
+test "optional flag matching excludes every positional slot" {
+  assert_eq(
+    parse_args(["get", "f", "--write"]),
+    Ok(Get(file="f", path=["--write"])),
+  )
+  assert_eq(
+    parse_args(["set", "f", "key", "--write", "--write"]),
+    Ok(Set(file="f", path=["key"], encoded="--write", write=true)),
   )
 }
 
@@ -154,4 +166,16 @@ test "every command error renders one sanitized line with exit status two" {
     assert_eq(error.exit_code(), 2)
     assert_eq(error.to_string().split("\n").to_array().length(), 1)
   }
+}
+
+///|
+test "command errors escape Unicode separators and bidi formatting controls" {
+  let error = CommandError::UnknownCommand(
+    "a\u061Cb\u200Ec\u200Fd\u2028e\u2029f\u202Ag\u202Eh\u2066i\u2069j",
+  )
+  assert_eq(
+    error.to_string(),
+    "unknown command: a\\u{61c}b\\u{200e}c\\u{200f}d\\u{2028}e" +
+    "\\u{2029}f\\u{202a}g\\u{202e}h\\u{2066}i\\u{2069}j",
+  )
 }
