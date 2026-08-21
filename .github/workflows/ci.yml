@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install MoonBit toolchain
         run: |
@@ -21,9 +21,10 @@ jobs:
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
+          cache: false
 
       - name: Update MoonBit package registry
         run: moon update
