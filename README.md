@@ -18,16 +18,17 @@ minimal text patches, and the `check/get/set/remove` workflow.
 
 ```powershell
 $demo = Join-Path $env:TEMP 'toml-workbench-demo.toml'
-Set-Content -LiteralPath $demo -NoNewline -Encoding utf8 -Value "title  =  `"old`" # keep`n[server]`nport = 8080`n"
+Set-Content -LiteralPath $demo -NoNewline -Encoding utf8 -Value "title  =  `"old`" # keep`n[server]`nport = 8080`nobsolete = true # remove-preview`n"
 
 moon run --target native cmd/workbench -- check $demo
 moon run --target native cmd/workbench -- get $demo server.port
 moon run --target native cmd/workbench -- set $demo title '"new"'
 moon run --target native cmd/workbench -- set $demo title '"new"' --write
+moon run --target native cmd/workbench -- remove $demo server.obsolete
 Get-Content -Raw -LiteralPath $demo
 ```
 
-预期：`check` 成功时无输出；`get` 输出带类型标签的 JSON；第一次 `set` 只预览、不改文件；第二次带 `--write`，最终仍保留 `title` 两侧空格和 `# keep` 注释。
+预期：`check` 成功时无输出；`get` 输出带类型标签的 JSON；第一次 `set` 只预览、不改文件；第二次带 `--write`，最终仍保留 `title` 两侧空格和 `# keep` 注释。`remove` 输出删去 `server.obsolete` 后的完整候选文本，但因为未带 `--write`，最后的 `Get-Content` 仍能看到该行。
 
 命令接口：
 
