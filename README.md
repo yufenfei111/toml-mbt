@@ -12,6 +12,8 @@ minimal text patches, and the `check/get/set/remove` workflow.
 
 > 发布状态：原解析器模块 [`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；仓库元数据已为 Workbench 准备 `0.2.0`，但该版本尚未发布，当前应从源码构建。**在赛事验收前发布 `0.2.0` 并回填可验证链接是必做事项。**
 
+重新申报材料：[申请书 Markdown](docs/application.md)｜[一页 PDF](output/pdf/MoonBit-TOML-Workbench-八月黑客松重新申报书.pdf)｜[提交验收清单](docs/resubmission-checklist.md)
+
 ## 三分钟演示
 
 需要 MoonBit 工具链，并在仓库根目录执行。以下为 PowerShell 7 示例：
