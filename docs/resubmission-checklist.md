@@ -79,7 +79,7 @@ Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 - [x] 根目录存在 OSI 认可的 [Apache-2.0 `LICENSE`](../LICENSE)。
 - [x] [`docs/application.md`](application.md) 已包含驳回整改、差异、证据、边界、三分钟评审和后续计划。
 - [x] 本地三分钟评审路径已从全新临时目录中的注释 TOML 样例复演。
-- [ ] 将 GitHub 仓库 About/Description 更新为“Format-preserving TOML inspection and safe editing Workbench for MoonBit”，并补充合适 topics。
+- [x] GitHub About/Description 已更新为“Format-preserving TOML inspection and safe editing Workbench for MoonBit”，并添加 `moonbit`、`toml`、`cli`、`developer-tools`、`format-preserving`、`configuration` topics。
 - [x] 完整 Workbench 历史已合并到默认分支并推送，开发提交历史保留。
 - [x] 推送后的 [GitHub Actions](https://github.com/yufenfei111/toml-mbt/actions/runs/32453249291) 已完成且全部通过。
 - [ ] 在未登录/无缓存浏览器中按 README 再执行一次演示，并确认相对链接均可访问。
