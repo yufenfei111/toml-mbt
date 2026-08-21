@@ -43,6 +43,9 @@ jobs:
       - name: Build native toml-test decoder
         run: moon build --release --target native cmd/toml-test-decoder
 
+      - name: Test POSIX toml-test launcher
+        run: ./scripts/test-toml-test-launcher-posix.sh
+
       - name: Format check
         run: moon fmt --check
 

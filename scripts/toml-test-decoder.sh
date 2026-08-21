@@ -3,7 +3,12 @@ set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
-decoder="$repo_root/_build/native/release/build/cmd/toml-test-decoder/toml-test-decoder"
+decoder_base="$repo_root/_build/native/release/build/cmd/toml-test-decoder/toml-test-decoder"
+if [ -x "$decoder_base.exe" ]; then
+  decoder="$decoder_base.exe"
+else
+  decoder="$decoder_base"
+fi
 
 if [ "${TOML_TEST_DECODER_NO_BUILD:-}" = 1 ]; then
   if [ ! -x "$decoder" ]; then
