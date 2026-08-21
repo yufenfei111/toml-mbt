@@ -36,5 +36,3 @@
 3. 运行 `moon test` 与 `moon test --target native -p yufenfei111/toml-mbt/cmd/workbench`。
 
 **尚未完成、只列为后续：** 截止 **2026-08-24 24:00** 前优先修复 decoder 异常终止、补充 Linux 证据，并把已准备的 Workbench `0.2.0` 发布到 mooncakes.io（验收前必做）；之后再处理剩余 TOML 1.0 差距、文件元数据保留、并发修改检测和 patch/diff 输出。申请目标是证明新增工具链与现有解析器项目有清晰边界；以上材料提升初审可核验性，但不承诺审核结果。
-
-> PDF/外部申报书中的 `main` 与固定 commit 链接，只有在本分支最终合并并推送到 GitHub 后才会公开解析；提交报名材料前必须逐一复核。
