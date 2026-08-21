@@ -25,13 +25,13 @@
 
 ## 三、可复现证据与边界
 
-2026-08-20，Moon `0.1.20260807` / moonc `v0.10.7+bc794d341`：`moon check --deny-warn` 通过；`moon test` 为 **420/420**；原生 CLI 为 **11/11**；native build 通过。官方 `toml-test` **v2.2.0** 以 Windows launcher、`-timeout 10s -parallel 1` 连续两次得到 valid **181/205**、invalid **421/474**，因仍有差距而正常返回 exit 1。复现命令见 [README](https://github.com/yufenfei111/toml-mbt#可复现验证)，项目测试与官方用例从不混计。
+2026-08-20，Moon `0.1.20260807` / moonc `v0.10.7+bc794d341`：`moon check --deny-warn` 通过；`moon test` 为 **420/420**；原生 CLI 为 **11/11**；native build 通过。官方 `toml-test` **v2.2.0** 以 Windows launcher、`-timeout 10s -parallel 1` 连续两次得到 valid **181/205**、invalid **421/474**，因仍有差距而正常返回 exit 1。复现命令见 [README](https://github.com/yufenfei111/toml-mbt#%E5%8F%AF%E5%A4%8D%E7%8E%B0%E9%AA%8C%E8%AF%81)，项目测试与官方用例从不混计。
 
 已知限制：仅支持 TOML 1.0；语义兼容层仍有 24 个 valid、53 个 invalid 官方差距，其中三个无效日期时间样例会使 native decoder 异常终止；不安全编辑会拒绝。原子替换假设可信、稳定、非符号链接路径且无并发写入；Unix 权限可能收窄为 `0600`，不保留 owner/xattr/Windows ACL。旧 [`0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；Workbench `0.2.0` 已准备模块元数据但尚未发布，**在赛事验收前发布并回填版本链接是必做事项**。
 
 ## 四、评审三分钟复现与后续计划
 
-1. 按 [README 三分钟演示](https://github.com/yufenfei111/toml-mbt#三分钟演示) 创建样例并运行 `check/get/set`；确认无 `--write` 时文件不变。
+1. 按 [README 三分钟演示](https://github.com/yufenfei111/toml-mbt#%E4%B8%89%E5%88%86%E9%92%9F%E6%BC%94%E7%A4%BA) 创建样例并运行 `check/get/set`；确认无 `--write` 时文件不变。
 2. 加 `--write`；确认仅值变化，原空格和行尾注释保留。
 3. 运行 `moon test` 与 `moon test --target native -p yufenfei111/toml-mbt/cmd/workbench`。
 

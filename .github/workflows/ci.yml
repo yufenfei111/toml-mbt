@@ -31,6 +31,12 @@ jobs:
       - name: Run tests
         run: moon test
 
+      - name: Run native Workbench integration tests
+        run: moon test --target native -p yufenfei111/toml-mbt/cmd/workbench
+
+      - name: Build native Workbench CLI
+        run: moon build --target native cmd/workbench
+
       - name: Build native toml-test decoder
         run: moon build --release --target native cmd/toml-test-decoder
 

@@ -50,7 +50,7 @@ English reference note:
 | 原生构建 | `moon build --target native` exit 0 | 通过 |
 | 官方套件 | `toml-test` v2.2.0：valid **181/205**、invalid **421/474**、exit 1 | 真实基线，仍有差距 |
 | 三分钟演练 | `check/get/set` 预览/`set --write`/`remove` 预览均 exit 0；预览不写盘；CRLF、空格和注释保留；落盘文件与删除候选均重新解析成功 | 通过 |
-| 仓库分支 | Workbench 分支比本地 `main` 多 22 个提交；尚未合并、推送 | 未完成 |
+| 仓库分支 | `feature/toml-workbench` 包含完整 Workbench 提交历史；尚未合并、推送 | 未完成 |
 | Mooncakes | 旧解析器 `0.1.0` 已发布；Workbench 元数据为 `0.2.0`，尚未发布 | 未完成 |
 
 官方复现使用正确的 v2 模块路径：
@@ -89,8 +89,8 @@ Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 - [x] 旧包 [`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 与未发布 Workbench `0.2.0` 的状态已明确区分。
 - [ ] 正式执行并核验 `moon publish`，确认 mooncakes.io 展示 `0.2.0`；dry-run 或 `202 Accepted` 不能代替发布成功。
 - [ ] 把 `0.2.0` 的最终公开链接回填到 README、申请书、PDF 和报名表。
-- [ ] 将已审核的 [`docs/application.md`](application.md) 同步到工作区外的 `C:\Users\雨\Desktop\github\申报书.md`；本任务没有修改该外部文件。
-- [ ] 按官方要求导出约一页 PDF；检查无分页溢出、乱码、截断、失效链接和过小字号。
+- [x] 已审核的 [`docs/application.md`](application.md) 已同步到工作区外的 `C:\Users\雨\Desktop\github\申报书.md`，内容一致。
+- [x] 已按官方要求导出 [一页 PDF](../output/pdf/MoonBit-TOML-Workbench-八月黑客松重新申报书.pdf)，并检查页数、字体嵌入、乱码、截断、视觉布局和超链接注释。
 - [ ] 把 PDF 放到可匿名访问的位置，在退出登录的窗口中下载复核，并将 URL 填入报名表。
 - [ ] 确认报名表项目名、仓库 URL、Mooncakes URL、PDF URL、项目说明和联系人信息完全一致。
 - [ ] 在不登录 GitHub/Mooncakes/文档托管服务的浏览器中逐一检查所有 `main`、固定 commit、CI、版本和 PDF 链接。
