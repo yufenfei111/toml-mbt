@@ -2,9 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-08-21
 
-Workbench `0.2.0` is prepared in repository metadata but has not been published to mooncakes.io. Publishing it and recording the resulting version link is required before contest validation.
+Workbench [`0.2.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) is published on mooncakes.io. A clean consumer project resolved `yufenfei111/toml-mbt@0.2.0`, installed `moonbitlang/async@0.20.1`, and passed `moon check`.
 
 ### Changed — compatibility corrections
 

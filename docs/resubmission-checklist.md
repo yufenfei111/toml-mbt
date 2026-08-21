@@ -1,18 +1,18 @@
 # MoonBit TOML Workbench 重新申报验收清单
 
-> 核验日期：2026-08-20。`[x]` 表示已有本地或仓库证据；`[ ]` 表示仍需项目作者或最终控制任务完成。未勾选项不能因文档已经写好而视为完成。
+> 核验日期：2026-08-21。`[x]` 表示已有本地、仓库或公开服务证据；`[ ]` 表示仍需项目作者完成。未勾选项不能因文档已经写好而视为完成。
 
 ## 先回答：是否只重新提交新申请书即可
 
 **不建议只提交一份新文字。** 应先让报名表、约一页 PDF、公开仓库 `main`、CI、Mooncakes 版本和申请书中的链接指向同一份可验证成果，再提交更新后的报名信息。当前可直接作为内容底稿的是 [`docs/application.md`](application.md)，但在重新提交前仍须完成本文“提交前人工动作”中的所有项目。
 
-建议提交顺序：
+当前提交顺序与状态：
 
-1. 将 `feature/toml-workbench` 的完整提交历史合并到 `main` 并推送；
-2. 发布 `yufenfei111/toml-mbt@0.2.0`，记录可匿名访问的 Mooncakes 链接；
-3. 用已审核的 [`docs/application.md`](application.md) 同步外部申报书并导出约一页 PDF；
-4. 在未登录浏览器中检查仓库、CI、Mooncakes、PDF、`main` 和固定 commit 链接；
-5. 更新报名表并在 **2026-08-24 24:00** 前重新提交。
+1. **已完成：** 将完整 Workbench 提交历史合并到 `main` 并推送；
+2. **已完成：** 发布 `yufenfei111/toml-mbt@0.2.0`，记录 Mooncakes 链接；
+3. **已完成：** 用已审核的 [`docs/application.md`](application.md) 同步外部申报书并导出一页 PDF；
+4. **待作者复核：** 在未登录浏览器中检查仓库、CI、Mooncakes、PDF、`main` 和固定 commit 链接；
+5. **待作者提交：** 更新报名表并在 **2026-08-24 24:00** 前重新提交。
 
 ## 官方要求摘要
 
@@ -38,7 +38,7 @@ English reference note:
 
 > The original submission overlapped with an existing TOML parser. The revised project explicitly acknowledges that work and narrows its contribution to format-preserving analysis and safe source editing. The parser is now compatibility infrastructure, while the lossless syntax, diagnostics, patch engine, and Workbench CLI are the reviewable hackathon deliverables.
 
-## 2026-08-20 最终本地证据
+## 2026-08-21 最终本地与公开证据
 
 | 核验项 | 实际结果 | 状态 |
 | --- | --- | --- |
@@ -50,8 +50,8 @@ English reference note:
 | 原生构建 | `moon build --target native` exit 0 | 通过 |
 | 官方套件 | `toml-test` v2.2.0：valid **181/205**、invalid **421/474**、exit 1 | 真实基线，仍有差距 |
 | 三分钟演练 | `check/get/set` 预览/`set --write`/`remove` 预览均 exit 0；预览不写盘；CRLF、空格和注释保留；落盘文件与删除候选均重新解析成功 | 通过 |
-| 仓库分支 | `feature/toml-workbench` 包含完整 Workbench 提交历史；尚未合并、推送 | 未完成 |
-| Mooncakes | 旧解析器 `0.1.0` 已发布；Workbench 元数据为 `0.2.0`，尚未发布 | 未完成 |
+| 仓库分支 | 完整 Workbench 历史已合并并推送到公开 `main`；[最终 CI](https://github.com/yufenfei111/toml-mbt/actions/runs/32453249291) 全绿 | 通过 |
+| Mooncakes | Workbench [`yufenfei111/toml-mbt@0.2.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；全新消费者可指定版本安装并通过 `moon check` | 通过 |
 
 官方复现使用正确的 v2 模块路径：
 
@@ -80,15 +80,15 @@ Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 - [x] [`docs/application.md`](application.md) 已包含驳回整改、差异、证据、边界、三分钟评审和后续计划。
 - [x] 本地三分钟评审路径已从全新临时目录中的注释 TOML 样例复演。
 - [ ] 将 GitHub 仓库 About/Description 更新为“Format-preserving TOML inspection and safe editing Workbench for MoonBit”，并补充合适 topics。
-- [ ] 将完整 Workbench 历史合并到默认分支并推送；不要只复制最终文件而丢失开发历史。
-- [ ] 等推送后的 GitHub Actions 完成，记录公开且通过的 CI run 链接。
+- [x] 完整 Workbench 历史已合并到默认分支并推送，开发提交历史保留。
+- [x] 推送后的 [GitHub Actions](https://github.com/yufenfei111/toml-mbt/actions/runs/32453249291) 已完成且全部通过。
 - [ ] 在未登录/无缓存浏览器中按 README 再执行一次演示，并确认相对链接均可访问。
 
 ## 发布、PDF 与报名表
 
-- [x] 旧包 [`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 与未发布 Workbench `0.2.0` 的状态已明确区分。
-- [ ] 正式执行并核验 `moon publish`，确认 mooncakes.io 展示 `0.2.0`；dry-run 或 `202 Accepted` 不能代替发布成功。
-- [ ] 把 `0.2.0` 的最终公开链接回填到 README、申请书、PDF 和报名表。
+- [x] Workbench [`yufenfei111/toml-mbt@0.2.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已于 2026-08-21 正式发布。
+- [x] `moon publish` 返回 `Server status: 200 OK`；全新临时项目随后下载指定 `0.2.0`、解析 `async@0.20.1` 并通过 `moon check`。
+- [x] `0.2.0` 的最终公开链接已回填到 README、申请书和 PDF；报名表仍须人工填写。
 - [x] 已审核的 [`docs/application.md`](application.md) 已同步到工作区外的 `C:\Users\雨\Desktop\github\申报书.md`，内容一致。
 - [x] 已按官方要求导出 [一页 PDF](../output/pdf/MoonBit-TOML-Workbench-八月黑客松重新申报书.pdf)，并检查页数、字体嵌入、乱码、截断、视觉布局和超链接注释。
 - [ ] 把 PDF 放到可匿名访问的位置，在退出登录的窗口中下载复核，并将 URL 填入报名表。

@@ -10,7 +10,7 @@ minimal text patches, and the `check/get/set/remove` workflow.
 
 本项目面向“只改一个配置值，不重排整份文件”的场景。默认编辑只把完整候选文本输出到标准输出；只有显式传入 `--write` 才会替换文件。当前语法目标是 TOML 1.0，不开启 TOML 1.1 扩展；尚未通过的 1.0 用例在下文如实列出。
 
-> 发布状态：原解析器模块 [`yufenfei111/toml-mbt@0.1.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已发布；仓库元数据已为 Workbench 准备 `0.2.0`，但该版本尚未发布，当前应从源码构建。**在赛事验收前发布 `0.2.0` 并回填可验证链接是必做事项。**
+> 发布状态：Workbench [`yufenfei111/toml-mbt@0.2.0`](https://mooncakes.io/docs/yufenfei111/toml-mbt) 已于 2026-08-21 发布。全新临时项目已通过 `moon add yufenfei111/toml-mbt@0.2.0`、依赖树解析和 `moon check`；原生 CLI 仍按下文从源码构建运行。
 
 重新申报材料：[申请书 Markdown](docs/application.md)｜[一页 PDF](output/pdf/MoonBit-TOML-Workbench-八月黑客松重新申报书.pdf)｜[提交验收清单](docs/resubmission-checklist.md)
 
@@ -68,7 +68,7 @@ raw TOML
 
 ## 可复现验证
 
-2026-08-20 在 Windows、Moon `0.1.20260807`、moonc `v0.10.7+bc794d341` 上重新执行：
+2026-08-21 在 Windows、Moon `0.1.20260807`、moonc `v0.10.7+bc794d341` 上重新执行：
 
 ```powershell
 moon check --deny-warn
@@ -80,7 +80,7 @@ git diff --check
 
 结果分别为：无警告；项目测试 **420/420**；原生 CLI 文件系统测试 **11/11**；原生构建和空白检查通过。项目测试数量与官方一致性测试严格分开。
 
-CI 运行同类检查，并固定调用 [`toml-test` v2.2.0](https://github.com/toml-lang/toml-test/tree/v2.2.0)；见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
+CI 运行同类检查，并固定调用 [`toml-test` v2.2.0](https://github.com/toml-lang/toml-test/tree/v2.2.0)；见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 与 [2026-08-21 Ubuntu 成功运行](https://github.com/yufenfei111/toml-mbt/actions/runs/32453249291)。
 
 ## 官方 `toml-test` 结果
 
@@ -94,7 +94,7 @@ go run github.com/toml-lang/toml-test/v2/cmd/toml-test@v2.2.0 test `
 Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 ```
 
-2026-08-20 连续两次结果一致：有效用例 **181/205**，无效用例 **421/474**。命令退出码为 `1`，因为仍有 **24** 个有效用例和 **53** 个无效用例未通过；这不是全量合规声明。CI 的脚本把结果作为公开的非回归基线，而不是把失败隐藏为成功。
+2026-08-20 Windows 连续两次、2026-08-21 Ubuntu CI 再次得到一致结果：有效用例 **181/205**，无效用例 **421/474**。官方 runner 返回 `1`，因为仍有 **24** 个有效用例和 **53** 个无效用例未通过；基线校验通过不等于全量合规。
 
 ## 已知限制与安全边界
 
@@ -103,14 +103,14 @@ Remove-Item Env:TOML_TEST_DECODER_NO_BUILD
 - “格式保留”指未触及文本按字节保留和局部最小补丁，不是任意文档的自动格式化器。
 - `--write` 的 MVP 信任稳定、可信、非符号链接的目标路径，且假设没有并发写入者或目录/链接交换。它不是敌对文件系统事务协议。
 - 临时文件从首字节起以 `0600` 请求创建。Unix 替换后权限可能收窄为 `0600`；当前 async API 不能复制原文件的 mode、owner、扩展属性或 Windows ACL。Windows 会忽略 mode 参数并采用目录 ACL 行为。
-- Workbench `0.2.0` 已完成模块元数据准备但尚未发布，当前从源码运行；在赛事验收前发布并回填链接是必做事项。
+- Workbench `0.2.0` 已发布并通过全新消费者安装检查；发布包中的库可通过 `moon add yufenfei111/toml-mbt@0.2.0` 使用，原生 CLI 当前仍从源码构建。
 
 ## 路线图（尚未完成）
 
 - 修复剩余 TOML 1.0 一致性差距及 native decoder 异常终止；
 - 为受支持平台增加经审查的文件元数据保留层和并发修改检测；
 - 增加机器可读 patch/diff 输出，并扩大数组表的无歧义编辑范围；
-- **验收前必做：** 发布 Workbench `0.2.0` 到 mooncakes.io、回填版本链接并复核独立 CLI 安装说明。
+- 将原生 CLI 拆分为可直接安装的 `moonx` 包；当前发布版本先提供库包和源码构建入口。
 
 ## 与现有项目的关系
 
